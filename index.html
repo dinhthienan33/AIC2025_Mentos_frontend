@@ -1,0 +1,1006 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Visual Search</title>
+    <style>
+      body { 
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; 
+        margin: 0; 
+        padding: 20px; 
+        background: #0b0c10; 
+        color: #eaf0f6; 
+      }
+      .container { 
+        max-width: 800px; 
+        margin: 0 auto; 
+      }
+      h1 { 
+        font-size: 24px; 
+        margin: 0 0 20px; 
+        font-weight: 600; 
+        text-align: center; 
+      }
+      .search { 
+        display: flex; 
+        gap: 8px; 
+        margin-bottom: 20px; 
+      }
+      .controls {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 20px;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .control-group {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .control-group label {
+        font-size: 14px;
+        color: #9fb0c6;
+      }
+      .control-group input, .control-group select {
+        padding: 6px 8px;
+        border-radius: 6px;
+        border: 1px solid #233142;
+        background: #10131a;
+        color: #eaf0f6;
+        outline: none;
+      }
+      .control-group input[type="number"] {
+        width: 60px;
+      }
+      .control-group input[type="checkbox"] {
+        margin-left: 4px;
+      }
+      .search input { 
+        flex: 1; 
+        padding: 12px 14px; 
+        border-radius: 10px; 
+        border: 1px solid #233142; 
+        background: #10131a; 
+        color: #eaf0f6; 
+        outline: none; 
+        font-size: 16px; 
+      }
+      .search button { 
+        padding: 12px 16px; 
+        border-radius: 10px; 
+        background: #3b82f6; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+        font-weight: 600; 
+      }
+      .search button:disabled { 
+        opacity: 0.6; 
+        cursor: not-allowed; 
+      }
+      .search button.cancel { 
+        background: #ef4444; 
+        margin-left: 8px; 
+      }
+      .grid { 
+        display: flex; 
+        flex-wrap: wrap; 
+        gap: 12px; 
+        justify-content: center; 
+      }
+      .card { 
+        background: #0f1320; 
+        border: 1px solid #1f2937; 
+        border-radius: 12px; 
+        overflow: hidden; 
+        width: 240px; 
+      }
+      .thumb { 
+        width: 100%; 
+        aspect-ratio: 16/9; 
+        object-fit: cover; 
+        background: #0e1628; 
+        display: block; 
+      }
+      .meta { 
+        padding: 8px 10px; 
+        font-size: 12px; 
+        color: #a2b0c6; 
+        white-space: nowrap; 
+        overflow: hidden; 
+        text-overflow: ellipsis; 
+      }
+      .status { 
+        font-size: 14px; 
+        color: #8aa1bf; 
+        text-align: center; 
+        margin: 20px 0; 
+      }
+      .processing-time {
+        font-size: 16px;
+        color: #10b981;
+        text-align: center;
+        margin: 20px 0;
+        font-weight: 600;
+        padding: 12px;
+        background: rgba(16, 185, 129, 0.1);
+        border-radius: 8px;
+        border: 1px solid rgba(16, 185, 129, 0.2);
+      }
+      .video-header {
+        width: 100%;
+        margin: 20px 0 10px 0;
+        padding: 12px 16px;
+        background: linear-gradient(135deg, #1e40af, #3b82f6);
+        color: white;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 14px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .score-display {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-left: 6px;
+      }
+      .video-card {
+        background: #0f1320;
+        border: 1px solid #1f2937;
+        border-radius: 12px;
+        overflow: hidden;
+        width: 320px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
+      .video-card:hover {
+        border-color: #3b82f6;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+      }
+      .video-info {
+        padding: 16px;
+      }
+      .video-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #eaf0f6;
+        margin-bottom: 8px;
+      }
+      .video-stats {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+        color: #a2b0c6;
+      }
+      .keyframe-count {
+        background: rgba(59, 130, 246, 0.2);
+        color: #60a5fa;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .best-score {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
+      .back-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #374151;
+        color: #eaf0f6;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-bottom: 20px;
+        transition: background 0.2s ease;
+      }
+      .back-button:hover {
+        background: #4b5563;
+      }
+      .keyframes-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 16px;
+        background: #0f1320;
+        border-radius: 10px;
+        border: 1px solid #1f2937;
+      }
+      .video-link-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #dc2626;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s ease;
+      }
+      .video-link-btn:hover {
+        background: #b91c1c;
+      }
+      .keyframe-thumb {
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 2px solid transparent;
+      }
+      .keyframe-thumb:hover {
+        border-color: #3b82f6;
+        transform: scale(1.02);
+      }
+      
+      /* Video Player Styles */
+      .video-player-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      
+      .video-player-container {
+        background: #0f1320;
+        border-radius: 12px;
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 100%;
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .video-player-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 20px;
+        background: #1e293b;
+        border-bottom: 1px solid #334155;
+      }
+      
+      .video-player-title {
+        color: #eaf0f6;
+        font-weight: 600;
+        font-size: 18px;
+      }
+      
+      .video-player-close {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+      }
+      
+      .video-player-close:hover {
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+      }
+      
+      .video-player-content {
+        padding: 20px;
+        text-align: center;
+      }
+      
+      .video-iframe {
+        width: 100%;
+        max-width: 800px;
+        height: 450px;
+        border: none;
+        border-radius: 8px;
+        background: #000;
+      }
+      
+      .video-timeline {
+        margin-top: 20px;
+        padding: 20px;
+        background: #1e293b;
+        border-radius: 8px;
+        border: 1px solid #334155;
+      }
+      
+      .timeline-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+        color: #eaf0f6;
+        font-weight: 600;
+      }
+      
+      .timeline-info {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        color: #94a3b8;
+        font-size: 14px;
+      }
+      
+      .timeline-marker {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 12px;
+      }
+      
+      .timeline-start {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+      }
+      
+      .timeline-end {
+        background: rgba(239, 68, 68, 0.2);
+        color: #ef4444;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+      }
+      
+      .timeline-bar {
+        width: 100%;
+        height: 8px;
+        background: #334155;
+        border-radius: 4px;
+        position: relative;
+        margin: 16px 0;
+        overflow: hidden;
+      }
+      
+      .timeline-progress {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #3b82f6);
+        border-radius: 4px;
+        position: relative;
+        transition: width 0.3s ease;
+      }
+      
+      .timeline-start-marker {
+        position: absolute;
+        top: -4px;
+        width: 16px;
+        height: 16px;
+        background: #10b981;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+      
+      .timeline-end-marker {
+        position: absolute;
+        top: -4px;
+        width: 16px;
+        height: 16px;
+        background: #ef4444;
+        border-radius: 50%;
+        border: 2px solid #fff;
+        transform: translateX(-50%);
+        z-index: 2;
+      }
+      
+      .timeline-labels {
+        display: flex;
+        justify-content: space-between;
+        color: #94a3b8;
+        font-size: 12px;
+        margin-top: 8px;
+      }
+      
+      .play-video-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 16px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        margin-top: 12px;
+      }
+      
+      .play-video-btn:hover {
+        background: #2563eb;
+        transform: translateY(-1px);
+      }
+      
+      .play-video-btn:active {
+        transform: translateY(0);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script>
+      const { useState } = React;
+      const isHttp = (s) => typeof s === 'string' && (s.startsWith('http://') || s.startsWith('https://'));
+
+      function App() {
+        const [query, setQuery] = useState("");
+        const [loading, setLoading] = useState(false);
+        const [items, setItems] = useState([]);
+        const [error, setError] = useState("");
+        const [abortController, setAbortController] = useState(null);
+        const [k, setK] = useState(10);
+        const [modelName, setModelName] = useState('jinav2');
+        const [scoreThreshold, setScoreThreshold] = useState(0.0);
+        const [groupByVideo, setGroupByVideo] = useState(true); // Default to grouped view
+        const [processingTime, setProcessingTime] = useState(null);
+        const [videoView, setVideoView] = useState('list'); // 'list' or 'keyframes'
+        const [selectedVideoId, setSelectedVideoId] = useState(null);
+        const [videoData, setVideoData] = useState({}); // Store grouped video data
+        const [videoPlayer, setVideoPlayer] = useState(null); // Video player state
+
+        // Mockup data for demonstration
+        const getMockupData = () => {
+          return {
+            query: query,
+            total_results: 9,
+            processing_time: 0.245,
+            results: [
+              // L21_V003 keyframes (JrDeTiLY0u8)
+              {
+                keyframe_id: "L21_V003_keyframe_001234",
+                video_id: "L21_V003",
+                group_id: "L21",
+                keyframe_num: 1234,
+                confidence_score: 0.95,
+                timestamp: 41.13, // 1234 frames / 30 fps ≈ 41.13 seconds
+                image_url: "https://via.placeholder.com/320x180/3b82f6/ffffff?text=L21_V003_Frame_1234",
+                image_path: "L21_V003_keyframe_001234.webp",
+                video_url: "https://youtube.com/watch?v=JrDeTiLY0u8&t=41s",
+                thumbnail_url: "https://i.ytimg.com/vi/JrDeTiLY0u8/sddefault.jpg?v=66adb77d"
+              },
+              {
+                keyframe_id: "L21_V003_keyframe_002456",
+                video_id: "L21_V003",
+                group_id: "L21",
+                keyframe_num: 2456,
+                confidence_score: 0.87,
+                timestamp: 81.87, // 2456 frames / 30 fps ≈ 81.87 seconds
+                image_url: "https://via.placeholder.com/320x180/3b82f6/ffffff?text=L21_V003_Frame_2456",
+                image_path: "L21_V003_keyframe_002456.webp",
+                video_url: "https://youtube.com/watch?v=JrDeTiLY0u8&t=82s",
+                thumbnail_url: "https://i.ytimg.com/vi/JrDeTiLY0u8/sddefault.jpg?v=66adb77d"
+              },
+              {
+                keyframe_id: "L21_V003_keyframe_003678",
+                video_id: "L21_V003",
+                group_id: "L21",
+                keyframe_num: 3678,
+                confidence_score: 0.82,
+                image_url: "https://via.placeholder.com/320x180/3b82f6/ffffff?text=L21_V003_Frame_3678",
+                image_path: "L21_V003_keyframe_003678.webp",
+                video_url: "https://youtube.com/watch?v=JrDeTiLY0u8",
+                thumbnail_url: "https://i.ytimg.com/vi/JrDeTiLY0u8/sddefault.jpg?v=66adb77d"
+              },
+              // L22_V006 keyframes (VE8zB4YjGw4) 
+              {
+                keyframe_id: "L22_V006_keyframe_005432",
+                video_id: "L22_V006",
+                group_id: "L22",
+                keyframe_num: 5432,
+                confidence_score: 0.91,
+                image_url: "https://via.placeholder.com/320x180/10b981/ffffff?text=L22_V006_Frame_5432",
+                image_path: "L22_V006_keyframe_005432.webp",
+                video_url: "https://youtube.com/watch?v=VE8zB4YjGw4",
+                thumbnail_url: "https://i.ytimg.com/vi/VE8zB4YjGw4/sddefault.jpg?v=66ab0d4e"
+              },
+              {
+                keyframe_id: "L22_V006_keyframe_006789",
+                video_id: "L22_V006",
+                group_id: "L22",
+                keyframe_num: 6789,
+                confidence_score: 0.88,
+                image_url: "https://via.placeholder.com/320x180/10b981/ffffff?text=L22_V006_Frame_6789",
+                image_path: "L22_V006_keyframe_006789.webp",
+                video_url: "https://youtube.com/watch?v=VE8zB4YjGw4",
+                thumbnail_url: "https://i.ytimg.com/vi/VE8zB4YjGw4/sddefault.jpg?v=66ab0d4e"
+              },
+              // L21_V008 keyframes (VfiS267Cq8Q) - using the third URL you provided
+              {
+                keyframe_id: "L21_V008_keyframe_007890",
+                video_id: "L21_V008",
+                group_id: "L21",
+                keyframe_num: 7890,
+                confidence_score: 0.84,
+                image_url: "https://via.placeholder.com/320x180/f59e0b/ffffff?text=L21_V008_Frame_7890",
+                image_path: "L21_V008_keyframe_007890.webp",
+                video_url: "https://youtube.com/watch?v=VfiS267Cq8Q",
+                thumbnail_url: "https://i.ytimg.com/vi/VfiS267Cq8Q/sddefault.jpg?v=66b4542c"
+              },
+              {
+                keyframe_id: "L21_V008_keyframe_008901",
+                video_id: "L21_V008",
+                group_id: "L21",
+                keyframe_num: 8901,
+                confidence_score: 0.79,
+                image_url: "https://via.placeholder.com/320x180/f59e0b/ffffff?text=L21_V008_Frame_8901",
+                image_path: "L21_V008_keyframe_008901.webp",
+                video_url: "https://youtube.com/watch?v=VfiS267Cq8Q",
+                thumbnail_url: "https://i.ytimg.com/vi/VfiS267Cq8Q/sddefault.jpg?v=66b4542c"
+              },
+              {
+                keyframe_id: "L21_V008_keyframe_009012",
+                video_id: "L21_V008",
+                group_id: "L21",
+                keyframe_num: 9012,
+                confidence_score: 0.76,
+                image_url: "https://via.placeholder.com/320x180/f59e0b/ffffff?text=L21_V008_Frame_9012",
+                image_path: "L21_V008_keyframe_009012.webp",
+                video_url: "https://youtube.com/watch?v=VfiS267Cq8Q",
+                thumbnail_url: "https://i.ytimg.com/vi/VfiS267Cq8Q/sddefault.jpg?v=66b4542c"
+              },
+              {
+                keyframe_id: "L21_V008_keyframe_010123",
+                video_id: "L21_V008",
+                group_id: "L21",
+                keyframe_num: 10123,
+                confidence_score: 0.73,
+                image_url: "https://via.placeholder.com/320x180/f59e0b/ffffff?text=L21_V008_Frame_10123",
+                image_path: "L21_V008_keyframe_010123.webp",
+                video_url: "https://youtube.com/watch?v=VfiS267Cq8Q",
+                thumbnail_url: "https://i.ytimg.com/vi/VfiS267Cq8Q/sddefault.jpg?v=66b4542c"
+              }
+            ],
+            model_used: modelName
+          };
+        };
+
+        const doSearch = async () => {
+          setError("");
+          setProcessingTime(null);
+          if (!query.trim()) return;
+          
+          // Validate and set defaults for empty fields
+          const finalK = k === '' || k === null || k === undefined ? 10 : parseInt(k) || 10;
+          const finalScoreThreshold = scoreThreshold === '' || scoreThreshold === null || scoreThreshold === undefined ? 0.0 : parseFloat(scoreThreshold) || 0.0;
+          
+          // Update state with validated values
+          if (k !== finalK) setK(finalK);
+          if (scoreThreshold !== finalScoreThreshold) setScoreThreshold(finalScoreThreshold);
+          
+          setLoading(true);
+          setVideoView('list'); // Reset to list view
+          setSelectedVideoId(null);
+          
+          const controller = new AbortController();
+          setAbortController(controller);
+          
+          try {
+            // Show immediate feedback
+            setItems([]);
+            setVideoData({});
+
+            // Real API call
+            const fetchPromise = fetch('http://localhost:8000/search', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                query: query,
+                top_k: finalK,
+                score_threshold: finalScoreThreshold,
+                model_name: modelName
+              }),
+              signal: controller.signal
+            });
+            const res = await fetchPromise;
+            if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+            const data = await res.json();
+            
+            // Set processing time if available
+            if (data.processing_time !== undefined) {
+              setProcessingTime(data.processing_time);
+            }
+            
+            // Extract results from API format
+            let results = data.results || [];
+            
+            if (results.length === 0) {
+              setError('No results found for your query');
+            } else {
+              // Always group by video in new UI
+              const grouped = {};
+              results.forEach(item => {
+                const videoId = item.video_id;
+                if (!grouped[videoId]) {
+                  grouped[videoId] = {
+                    video_id: videoId,
+                    group_id: item.group_id,
+                    video_url: item.video_url,
+                    thumbnail_url: item.thumbnail_url, // Store YouTube thumbnail
+                    keyframes: [],
+                    best_score: 0
+                  };
+                }
+                grouped[videoId].keyframes.push(item);
+                grouped[videoId].best_score = Math.max(grouped[videoId].best_score, item.confidence_score);
+              });
+
+              // Sort keyframes within each video by score
+              Object.values(grouped).forEach(video => {
+                video.keyframes.sort((a, b) => b.confidence_score - a.confidence_score);
+              });
+
+              // Convert to sorted video list
+              const videoList = Object.values(grouped)
+                .sort((a, b) => b.best_score - a.best_score);
+
+              setVideoData(grouped);
+              setItems(videoList);
+            }
+            
+          } catch (e) {
+            if (e.name === 'AbortError') {
+              setError('Search was cancelled');
+            } else if (e.message.includes('Failed to fetch')) {
+              setError('Unable to connect to server at localhost:8000');
+            } else {
+              setError(String(e?.message || e));
+            }
+          } finally {
+            setLoading(false);
+            setAbortController(null);
+          }
+        };
+
+        const cancelSearch = () => {
+          if (abortController) {
+            abortController.abort();
+            setAbortController(null);
+            setLoading(false);
+            setError('Search cancelled by user');
+          }
+        };
+
+        const exploreVideo = (videoId) => {
+          setSelectedVideoId(videoId);
+          setVideoView('keyframes');
+        };
+
+        const backToVideos = () => {
+          setVideoView('list');
+          setSelectedVideoId(null);
+        };
+
+        const navigateToVideo = (videoUrl) => {
+          window.open(videoUrl, '_blank', 'noopener,noreferrer');
+        };
+
+        const openVideoPlayer = (keyframe) => {
+          // Calculate end time as start time + 10 seconds (or use actual end time if available)
+          const startTime = keyframe.timestamp || 0;
+          const endTime = keyframe.end_time || (startTime + 10); // Default 10 second segment
+          
+          setVideoPlayer({
+            video_id: keyframe.video_id,
+            video_url: keyframe.video_url,
+            start_time: startTime,
+            end_time: endTime,
+            keyframe_num: keyframe.keyframe_num,
+            confidence_score: keyframe.confidence_score
+          });
+        };
+
+        const closeVideoPlayer = () => {
+          setVideoPlayer(null);
+        };
+
+        const formatTime = (seconds) => {
+          if (!seconds && seconds !== 0) return '0:00';
+          const mins = Math.floor(seconds / 60);
+          const secs = Math.floor(seconds % 60);
+          return `${mins}:${secs.toString().padStart(2, '0')}`;
+        };
+
+        const calculateTimelinePosition = (time, totalDuration) => {
+          if (!totalDuration || totalDuration <= 0) return 0;
+          return Math.min((time / totalDuration) * 100, 100);
+        };
+
+        return (
+          React.createElement('div', { className: 'container' },
+            React.createElement('h1', null, 'Visual Search'),
+            React.createElement('form', { 
+              className: 'search',
+              onSubmit: (e) => { e.preventDefault(); doSearch(); }
+            },
+              React.createElement('input', {
+                placeholder: 'Describe what you\'re looking for...',
+                value: query,
+                onChange: (e) => setQuery(e.target.value),
+                onKeyDown: (e) => { 
+                  if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    doSearch(); 
+                  }
+                },
+              }),
+              React.createElement('button', { 
+                type: 'button',
+                onClick: (e) => { e.preventDefault(); doSearch(); }, 
+                disabled: loading 
+              }, loading ? 'Searching…' : 'Search'),
+              loading && React.createElement('button', {
+                type: 'button',
+                className: 'cancel',
+                onClick: (e) => { e.preventDefault(); cancelSearch(); }
+              }, 'Cancel')
+            ),
+            React.createElement('div', { className: 'controls' },
+              React.createElement('div', { className: 'control-group' },
+                React.createElement('label', null, 'Results:'),
+                React.createElement('input', {
+                  type: 'number',
+                  min: 1,
+                  max: 1000,
+                  placeholder: '10',
+                  value: k,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setK(''); // Allow empty while typing
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue)) {
+                        setK(numValue);
+                      }
+                    }
+                  }
+                })
+              ),
+              React.createElement('div', { className: 'control-group' },
+                React.createElement('label', null, 'Score:'),
+                React.createElement('input', {
+                  type: 'number',
+                  min: 0,
+                  max: 1,
+                  step: 0.1,
+                  placeholder: '0.0',
+                  value: scoreThreshold,
+                  onChange: (e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      setScoreThreshold(''); // Allow empty while typing
+                    } else {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue)) {
+                        setScoreThreshold(numValue);
+                      }
+                    }
+                  }
+                })
+              ),
+              React.createElement('div', { className: 'control-group' },
+                React.createElement('label', null, 'Model:'),
+                React.createElement('select', {
+                  value: modelName,
+                  onChange: (e) => setModelName(e.target.value)
+                },
+                  React.createElement('option', { value: 'jinav2' }, 'Jina V2'),
+                  React.createElement('option', { value: 'jinav1' }, 'Jina V1'),
+                  React.createElement('option', { value: 'blip2-base' }, 'BLIP2')
+                )
+              ),
+
+            ),
+            error && React.createElement('div', { className: 'status' }, `Error: ${error}`),
+            !error && loading && React.createElement('div', { className: 'status' }, 'Searching...'),
+            !error && !loading && processingTime && React.createElement('div', { className: 'processing-time' }, `⚡ Search completed in ${processingTime.toFixed(2)} seconds`),
+            
+            // Main content area
+            videoView === 'list' ? (
+              // Video list view
+              React.createElement('div', { className: 'grid' },
+                items.map((video, i) => {
+                  // Use YouTube thumbnail if available, fallback to first keyframe image
+                  const thumbnailSrc = video.thumbnail_url || 
+                    (video.keyframes && video.keyframes[0] 
+                      ? video.keyframes[0].image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
+                      : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=');
+
+                  return React.createElement('div', { 
+                    className: 'video-card', 
+                    key: `video-${i}`,
+                    onClick: () => exploreVideo(video.video_id)
+                  },
+                    React.createElement('img', {
+                      className: 'thumb',
+                      src: thumbnailSrc,
+                      alt: `${video.video_id} YouTube thumbnail`,
+                      loading: 'lazy',
+                      onError: (e) => { 
+                        // Fallback to keyframe image if YouTube thumbnail fails
+                        if (video.keyframes && video.keyframes[0] && video.keyframes[0].image_url && e.currentTarget.src !== video.keyframes[0].image_url) {
+                          e.currentTarget.src = video.keyframes[0].image_url;
+                        } else {
+                          e.currentTarget.style.opacity = 0.5; 
+                          e.currentTarget.alt = 'Preview unavailable'; 
+                        }
+                      },
+                    }),
+                    React.createElement('div', { className: 'video-info' },
+                      React.createElement('div', { className: 'video-title' }, video.video_id),
+                      React.createElement('div', { className: 'video-stats' },
+                        React.createElement('span', { className: 'keyframe-count' }, 
+                          `${video.keyframes.length} keyframes`
+                        ),
+                        React.createElement('span', { className: 'best-score' }, 
+                          video.best_score.toFixed(3)
+                        )
+                      )
+                    )
+                  );
+                })
+              )
+            ) : (
+              // Keyframes view for selected video
+              selectedVideoId && videoData[selectedVideoId] ? React.createElement('div', null,
+                React.createElement('button', {
+                  className: 'back-button',
+                  onClick: backToVideos
+                }, '← Back to Videos'),
+                
+                React.createElement('div', { className: 'keyframes-header' },
+                  React.createElement('div', null,
+                    React.createElement('h2', { style: { margin: 0, color: '#eaf0f6' } }, 
+                      `${selectedVideoId} (${videoData[selectedVideoId].group_id})`
+                    ),
+                    React.createElement('p', { style: { margin: '4px 0 0 0', color: '#a2b0c6', fontSize: '14px' } }, 
+                      `${videoData[selectedVideoId].keyframes.length} keyframes found`
+                    )
+                  ),
+                  React.createElement('button', {
+                    className: 'video-link-btn',
+                    onClick: () => navigateToVideo(videoData[selectedVideoId].video_url)
+                  }, '📺 Watch on YouTube')
+                ),
+                
+                React.createElement('div', { className: 'grid' },
+                  videoData[selectedVideoId].keyframes.map((keyframe, i) => {
+                    const src = keyframe.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+                    const score = keyframe.confidence_score ? keyframe.confidence_score.toFixed(3) : '';
+                    
+                    return React.createElement('div', { className: 'card', key: `keyframe-${i}` },
+                      React.createElement('img', {
+                        className: 'thumb keyframe-thumb',
+                        src: src,
+                        alt: `${keyframe.video_id} - Frame ${keyframe.keyframe_num}`,
+                        loading: 'lazy',
+                        onClick: () => openVideoPlayer(keyframe),
+                        onError: (e) => { 
+                          e.currentTarget.style.opacity = 0.5; 
+                          e.currentTarget.alt = 'Preview unavailable'; 
+                        },
+                      }),
+                      React.createElement('div', { className: 'meta' },
+                        React.createElement('div', { title: keyframe.keyframe_id }, 
+                          `Frame ${keyframe.keyframe_num}`,
+                          score && React.createElement('span', { className: 'score-display' }, score)
+                        ),
+                        React.createElement('button', {
+                          className: 'play-video-btn',
+                          style: { 
+                            fontSize: '12px', 
+                            padding: '4px 8px',
+                            marginTop: '8px',
+                            width: '100%'
+                          },
+                          onClick: (e) => {
+                            e.stopPropagation();
+                            openVideoPlayer(keyframe);
+                          }
+                        }, '🎥 Play Video')
+                      )
+                    );
+                  })
+                )
+              ) : React.createElement('div', { className: 'status' }, 'No video selected')
+            )
+          ),
+          
+          // Video Player Overlay
+          videoPlayer && React.createElement('div', { className: 'video-player-overlay' },
+            React.createElement('div', { className: 'video-player-container' },
+              React.createElement('div', { className: 'video-player-header' },
+                React.createElement('div', { className: 'video-player-title' }, 
+                  `${videoPlayer.video_id} - Frame ${videoPlayer.keyframe_num}`
+                ),
+                React.createElement('button', {
+                  className: 'video-player-close',
+                  onClick: closeVideoPlayer
+                }, '×')
+              ),
+              
+              React.createElement('div', { className: 'video-player-content' },
+                React.createElement('iframe', {
+                  className: 'video-iframe',
+                  src: videoPlayer.video_url,
+                  title: `${videoPlayer.video_id} Video Player`,
+                  allowFullScreen: true,
+                  allow: 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'
+                }),
+                
+                React.createElement('div', { className: 'video-timeline' },
+                  React.createElement('div', { className: 'timeline-header' },
+                    React.createElement('span', null, 'Video Timeline'),
+                    React.createElement('div', { className: 'timeline-info' },
+                      React.createElement('span', { className: 'timeline-marker timeline-start' },
+                        '🎬 Start: ', formatTime(videoPlayer.start_time)
+                      ),
+                      videoPlayer.end_time && React.createElement('span', { className: 'timeline-marker timeline-end' },
+                        '⏹️ End: ', formatTime(videoPlayer.end_time)
+                      )
+                    )
+                  ),
+                  
+                  React.createElement('div', { className: 'timeline-bar' },
+                    React.createElement('div', {
+                      className: 'timeline-progress',
+                      style: { width: `${calculateTimelinePosition(videoPlayer.end_time, videoPlayer.end_time)}%` }
+                    }),
+                    React.createElement('div', {
+                      className: 'timeline-start-marker',
+                      style: { left: `${calculateTimelinePosition(videoPlayer.start_time, videoPlayer.end_time)}%` }
+                    }),
+                    videoPlayer.end_time && React.createElement('div', {
+                      className: 'timeline-end-marker',
+                      style: { left: `${calculateTimelinePosition(videoPlayer.end_time, videoPlayer.end_time)}%` }
+                    })
+                  ),
+                  
+                  React.createElement('div', { className: 'timeline-labels' },
+                    React.createElement('span', null, '0:00'),
+                    React.createElement('span', null, formatTime(videoPlayer.end_time || 100)) // Use actual end time or default
+                  )
+                ),
+                
+                React.createElement('button', {
+                  className: 'play-video-btn',
+                  onClick: () => window.open(videoPlayer.video_url, '_blank', 'noopener,noreferrer')
+                }, '🎥 Open in YouTube')
+              )
+            )
+          )
+        );
+      }
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    </script>
+  </body>
+</html>
