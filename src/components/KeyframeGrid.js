@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 
-const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo }) => {
-  const [sortBy, setSortBy] = useState('score'); // 'name', 'score', 'time'
+const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy }) => {
   const [zoomedFrame, setZoomedFrame] = useState(null);
   
   if (!selectedVideoId || !videoData[selectedVideoId]) {
     return <div className="status">No video selected</div>;
   }
 
+  const sortBy = externalSortBy || 'score';
   const video = videoData[selectedVideoId];
 
   const navigateToVideo = (videoUrl) => {
@@ -67,14 +67,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo 
         </button>
       </div>
 
-      <div className="sort-controls">
-        <label>Sort frames by:</label>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="score">Best Score</option>
-          <option value="name">Frame Number</option>
-          <option value="time">Timestamp</option>
-        </select>
-      </div>
+      {/* Sort controls removed; now in top toolbar */}
       
       <div className="grid">
         {sortedKeyframes.map((keyframe, i) => {
@@ -85,16 +78,16 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo 
           return (
             <div className="card" key={`keyframe-${i}`}>
                              <img
-                 className="thumb keyframe-thumb"
-                 src={src}
-                 alt={`${keyframe.video_id} - Frame ${keyframe.keyframe_num}`}
-                 loading="lazy"
-                 onClick={() => setZoomedFrame(keyframe)}
-                 onError={(e) => { 
-                   e.currentTarget.style.opacity = 0.5; 
-                   e.currentTarget.alt = 'Preview unavailable'; 
-                 }}
-               />
+                className="thumb keyframe-thumb"
+                src={src}
+                alt={`${keyframe.video_id} - Frame ${keyframe.keyframe_num}`}
+                loading="lazy"
+                onClick={() => setZoomedFrame(keyframe)}
+                onError={(e) => { 
+                  e.currentTarget.style.opacity = 0.5; 
+                  e.currentTarget.alt = 'Preview unavailable'; 
+                }}
+              />
               <div className="meta">
                 <div title={keyframe.keyframe_id}>
                   Frame {keyframe.keyframe_num}

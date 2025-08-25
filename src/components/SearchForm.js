@@ -21,7 +21,8 @@ const SearchForm = ({
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'Enter') {
+    // Keep Enter to new line in textarea; Ctrl+Enter to search
+    if (e.key === 'Enter' && e.ctrlKey) {
       e.preventDefault();
       onSearch();
     }
@@ -30,11 +31,13 @@ const SearchForm = ({
   return (
     <>
       <form className="search" onSubmit={handleSubmit}>
-        <input
+        <textarea
           placeholder={temporalSearch ? "Describe a sequence of events (e.g., 'train running, then vehicles waiting, then people closing barriers')" : "Describe what you're looking for..."}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
+          rows={6}
+          style={{ resize: 'vertical', whiteSpace: 'pre-wrap', minHeight: '140px' }}
         />
         <button
           type="button"

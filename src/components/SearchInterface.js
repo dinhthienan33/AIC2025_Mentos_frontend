@@ -19,6 +19,16 @@ const SearchInterface = ({ onOpenVideo }) => {
   const [videoView, setVideoView] = useState('list'); // 'list' or 'keyframes'
   const [selectedVideoId, setSelectedVideoId] = useState(null);
   const [videoData, setVideoData] = useState({}); // Store grouped video data
+  const [frameSortBy, setFrameSortBy] = useState('score'); // shared frames sort
+
+  // Filtering UI state
+  const [filteringEnabled, setFilteringEnabled] = useState(false);
+  const [filterOd, setFilterOd] = useState(false);
+  const [filterOcr, setFilterOcr] = useState(false);
+  const [filterAsr, setFilterAsr] = useState(false);
+  const [odValues, setOdValues] = useState(['']);
+  const [ocrValues, setOcrValues] = useState(['']);
+  const [asrValues, setAsrValues] = useState(['']);
 
   const doSearch = async () => {
     setError("");
@@ -137,73 +147,246 @@ const SearchInterface = ({ onOpenVideo }) => {
     setSelectedVideoId(null);
   };
 
+  const buildFilteringPayload = () => {
+    // origin_paths: take all unique video_ids from the first response
+    const originPaths = Array.from(new Set(Object.keys(videoData)));
+
+    // Convert value arrays to list[str], trimming empties
+    const listFromValues = (values) =>
+      (values || []).map(v => (v || '').trim()).filter(v => v.length > 0);
+
+    const filtering = {};
+    if (filterOd) filtering.od_text = listFromValues(odValues);
+    if (filterOcr) filtering.ocr_text = listFromValues(ocrValues);
+    if (filterAsr) filtering.asr_text = listFromValues(asrValues);
+
+    return { origin_paths: originPaths, filtering };
+  };
+
+  const onFilter = async () => {
+    try {
+      setError("");
+      if (!filteringEnabled) return;
+
+      const payload = buildFilteringPayload();
+      if (!payload.origin_paths || payload.origin_paths.length === 0) {
+        setError('No origin paths available. Run a search first.');
+        return;
+      }
+      if (!payload.filtering || Object.keys(payload.filtering).length === 0) {
+        setError('Select at least one filtering type and add values.');
+        return;
+      }
+
+      const res = await fetch('http://localhost:8000/filter-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+      const data = await res.json();
+
+      // Assume backend returns a list of filtered paths (video_ids)
+      const filteredPaths = Array.isArray(data)
+        ? data
+        : (data.results || data.paths || data.origin_paths || []);
+      if (!Array.isArray(filteredPaths)) {
+        setError('Unexpected filtering response format');
+        return;
+      }
+
+      const allowed = new Set(filteredPaths);
+      const newVideoData = {};
+      Object.entries(videoData).forEach(([vid, v]) => {
+        if (allowed.has(vid)) newVideoData[vid] = v;
+      });
+      const newItems = (items || []).filter(v => allowed.has(v.video_id));
+
+      setVideoData(newVideoData);
+      setItems(newItems);
+
+      // If current selected video is filtered out, reset view
+      if (selectedVideoId && !allowed.has(selectedVideoId)) {
+        backToVideos();
+      }
+    } catch (e) {
+      setError(String(e?.message || e));
+    }
+  };
+
+  const renderValues = (values, setValues) => (
+    <div className="filter-pairs">
+      {values.map((val, idx) => (
+        <div className="filter-pair-row" key={idx}>
+          <input
+            type="text"
+            placeholder="value"
+            value={val}
+            onChange={(e) => {
+              const next = [...values];
+              next[idx] = e.target.value;
+              setValues(next);
+            }}
+          />
+          <button
+            className="small-btn"
+            onClick={() => setValues(values.filter((_, i) => i !== idx))}
+            disabled={values.length <= 1}
+          >
+            −
+          </button>
+          <button
+            className="small-btn"
+            onClick={() => setValues([...values, ""])}
+          >
+            +
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
-    <div className="container">
-      <h1>Visual Search</h1>
-      
-             <SearchForm
-         query={query}
-         setQuery={setQuery}
-         k={k}
-         setK={setK}
-         scoreThreshold={scoreThreshold}
-         setScoreThreshold={setScoreThreshold}
-         modelName={modelName}
-         setModelName={setModelName}
-         temporalSearch={temporalSearch}
-         setTemporalSearch={setTemporalSearch}
-         loading={loading}
-         onSearch={doSearch}
-         onCancel={cancelSearch}
-       />
+    <div className="layout">
+      <aside className="sidebar">
+        <h2 className="sidebar-title">Controls</h2>
+        <SearchForm
+          query={query}
+          setQuery={setQuery}
+          k={k}
+          setK={setK}
+          scoreThreshold={scoreThreshold}
+          setScoreThreshold={setScoreThreshold}
+          modelName={modelName}
+          setModelName={setModelName}
+          temporalSearch={temporalSearch}
+          setTemporalSearch={setTemporalSearch}
+          loading={loading}
+          onSearch={doSearch}
+          onCancel={cancelSearch}
+        />
 
-       {/* View Mode Selector */}
-       {!loading && items.length > 0 && (
-         <div className="view-mode-selector">
-           <label>View Mode:</label>
-           <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
-             <option value="videos">Videos</option>
-             <option value="frames">Frames</option>
-           </select>
-         </div>
-       )}
+        {/* Filtering controls */}
+        <div className="controls">
+          <div className="control-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={filteringEnabled}
+                onChange={(e) => setFilteringEnabled(e.target.checked)}
+              />
+              filtering
+            </label>
+          </div>
 
-      {error && <div className="status">Error: {error}</div>}
-      {!error && loading && <div className="status">Searching...</div>}
-      {!error && !loading && temporalSearch && (
-        <div className="temporal-status">
-          🔄 Temporal Search Mode: Breaking down query into sequential events
+          {filteringEnabled && (
+            <div className="filtering-panel">
+              <div className="control-group">
+                <label>
+                  <input type="checkbox" checked={filterOd} onChange={(e) => setFilterOd(e.target.checked)} /> od
+                </label>
+                <label>
+                  <input type="checkbox" checked={filterOcr} onChange={(e) => setFilterOcr(e.target.checked)} /> ocr
+                </label>
+                <label>
+                  <input type="checkbox" checked={filterAsr} onChange={(e) => setFilterAsr(e.target.checked)} /> asr
+                </label>
+              </div>
+
+              {filterOd && (
+                <div className="filter-section">
+                  <div className="filter-title">od values</div>
+                  {renderValues(odValues, setOdValues)}
+                </div>
+              )}
+              {filterOcr && (
+                <div className="filter-section">
+                  <div className="filter-title">ocr values</div>
+                  {renderValues(ocrValues, setOcrValues)}
+                </div>
+              )}
+              {filterAsr && (
+                <div className="filter-section">
+                  <div className="filter-title">asr values</div>
+                  {renderValues(asrValues, setAsrValues)}
+                </div>
+              )}
+
+              <div className="control-group">
+                <button className="video-link-btn" onClick={onFilter}>Filter</button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-      {!error && !loading && processingTime && (
-        <div className="processing-time">
-          ⚡ Search completed in {processingTime.toFixed(2)} seconds
+      </aside>
+
+      <main className="content">
+        <div className="container">
+          <h1>Visual Search</h1>
+
+          {/* Top toolbar with View Mode and Sort together */}
+          {!loading && items.length > 0 && (
+            <div className="top-toolbar">
+              <div className="view-mode-selector">
+                <label>View Mode:</label>
+                <select value={viewMode} onChange={(e) => setViewMode(e.target.value)}>
+                  <option value="videos">Videos</option>
+                  <option value="frames">Frames</option>
+                </select>
+              </div>
+              <div className="sort-controls compact">
+                <label>Sort frames by:</label>
+                <select value={frameSortBy} onChange={(e) => setFrameSortBy(e.target.value)}>
+                  <option value="score">Best Score</option>
+                  <option value="name">Frame Number</option>
+                  <option value="time">Timestamp</option>
+                  <option value="video">Video Name</option>
+                  <option value="frame">Frame Number</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {error && <div className="status">Error: {error}</div>}
+          {!error && loading && <div className="status">Searching...</div>}
+          {!error && !loading && temporalSearch && (
+            <div className="temporal-status">
+              🔄 Temporal Search Mode: Breaking down query into sequential events
+            </div>
+          )}
+          {!error && !loading && processingTime && (
+            <div className="processing-time">
+              ⚡ Search completed in {processingTime.toFixed(2)} seconds
+            </div>
+          )}
+          
+          {/* Main content area */}
+          {viewMode === 'videos' ? (
+            // Videos view - normal behavior
+            videoView === 'list' ? (
+              <VideoList 
+                items={items} 
+                onExploreVideo={exploreVideo} 
+              />
+            ) : (
+              <KeyframeGrid
+                selectedVideoId={selectedVideoId}
+                videoData={videoData}
+                onBackToVideos={backToVideos}
+                onOpenVideo={onOpenVideo}
+                sortBy={frameSortBy}
+              />
+            )
+          ) : (
+            // Frames view - show all frames from all videos
+            <AllFramesView 
+              videoData={videoData}
+              onOpenVideo={onOpenVideo}
+              sortBy={frameSortBy}
+            />
+          )}
         </div>
-      )}
-      
-             {/* Main content area */}
-       {viewMode === 'videos' ? (
-         // Videos view - normal behavior
-         videoView === 'list' ? (
-           <VideoList 
-             items={items} 
-             onExploreVideo={exploreVideo} 
-           />
-         ) : (
-           <KeyframeGrid
-             selectedVideoId={selectedVideoId}
-             videoData={videoData}
-             onBackToVideos={backToVideos}
-             onOpenVideo={onOpenVideo}
-           />
-         )
-       ) : (
-         // Frames view - show all frames from all videos
-         <AllFramesView 
-           videoData={videoData}
-           onOpenVideo={onOpenVideo}
-         />
-       )}
+      </main>
     </div>
   );
 };

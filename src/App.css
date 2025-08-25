@@ -814,3 +814,120 @@ h1 {
   background: #047857;
   transform: translateY(-2px);
 }
+
+/* Layout with left sidebar */
+.layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 16px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  background: #0f1320;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 16px;
+  height: calc(100vh - 40px);
+  overflow: auto;
+}
+
+.sidebar-title {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  color: #9fb0c6;
+  font-weight: 700;
+}
+
+.content {
+  min-width: 0;
+}
+
+.filtering-panel {
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: #0b0f1a;
+}
+
+.filter-section {
+  margin-top: 10px;
+}
+
+.filter-title {
+  font-size: 13px;
+  color: #9fb0c6;
+  margin-bottom: 6px;
+}
+
+.filter-pair-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.small-btn {
+  padding: 0 8px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid #233142;
+  background: #10131a;
+  color: #eaf0f6;
+  cursor: pointer;
+}
+
+.small-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Sidebar-specific form adjustments */
+.sidebar .search {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.sidebar .search input,
+.sidebar .search button,
+.sidebar .search .cancel {
+  width: 100%;
+}
+
+.sidebar .controls {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.sidebar .control-group {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.sidebar .control-group input[type="number"],
+.sidebar .control-group select,
+.sidebar .control-group input[type="text"] {
+  width: 100%;
+}
+
+.top-toolbar {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: flex-start;
+  margin: 12px 0 16px;
+}
+
+.sort-controls.compact {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}

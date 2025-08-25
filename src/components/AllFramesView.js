@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 
-const AllFramesView = ({ videoData, onOpenVideo }) => {
-  const [sortBy, setSortBy] = useState('score'); // 'score', 'time', 'video', 'frame'
+const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy }) => {
+  const [sortByState, setSortByState] = useState('score'); // kept for backward compat, unused when external provided
+  const sortBy = externalSortBy || sortByState;
+  const [zoomedFrame, setZoomedFrame] = useState(null);
   
   if (!videoData || Object.keys(videoData).length === 0) {
     return <div className="status">No frames available</div>;
@@ -55,20 +57,7 @@ const AllFramesView = ({ videoData, onOpenVideo }) => {
 
   return (
     <>
-      {/* <div className="all-frames-header">
-        <h2>All Frames ({allFrames.length} total)</h2>
-        <p>Showing frames from all videos in search results</p>
-      </div> */}
-
-      <div className="sort-controls">
-        <label>Sort frames by:</label>
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-          <option value="score">Best Score</option>
-          <option value="time">Timestamp</option>
-          <option value="video">Video Name</option>
-          <option value="frame">Frame Number</option>
-        </select>
-      </div>
+      {/* Sort controls moved to toolbar */}
       
       <div className="grid">
         {sortedFrames.map((frame, i) => {
@@ -83,6 +72,7 @@ const AllFramesView = ({ videoData, onOpenVideo }) => {
                 src={src}
                 alt={`${frame.video_id} - Frame ${frame.keyframe_num}`}
                 loading="lazy"
+                onClick={() => setZoomedFrame(frame)}
                 onError={(e) => { 
                   e.currentTarget.style.opacity = 0.5; 
                   e.currentTarget.alt = 'Preview unavailable'; 
@@ -126,6 +116,56 @@ const AllFramesView = ({ videoData, onOpenVideo }) => {
           );
         })}
       </div>
+
+      {/* Zoom Frame Modal */}
+      {zoomedFrame && (
+        <div className="zoom-frame-overlay" onClick={() => setZoomedFrame(null)}>
+          <div className="zoom-frame-container" onClick={(e) => e.stopPropagation()}>
+            <div className="zoom-frame-header">
+              <div className="zoom-frame-title">
+                Frame {zoomedFrame.keyframe_num} - {zoomedFrame.video_id}
+              </div>
+              <button 
+                className="zoom-frame-close" 
+                onClick={() => setZoomedFrame(null)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="zoom-frame-content">
+              <img
+                className="zoom-frame-image"
+                src={zoomedFrame.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='}
+                alt={`${zoomedFrame.video_id} - Frame ${zoomedFrame.keyframe_num}`}
+              />
+              <div className="zoom-frame-info">
+                <div className="zoom-frame-details">
+                  <span className="zoom-frame-score">
+                    Score: {zoomedFrame.confidence_score ? zoomedFrame.confidence_score.toFixed(3) : 'N/A'}
+                  </span>
+                  <span className="zoom-frame-timestamp">
+                    Time: {zoomedFrame.timestamp ? `${zoomedFrame.timestamp.toFixed(1)}s` : 'N/A'}
+                  </span>
+                </div>
+                <div className="zoom-frame-actions">
+                  <button
+                    className="youtube-btn zoom-youtube-btn"
+                    onClick={() => navigateToVideo(zoomedFrame.video_url)}
+                  >
+                    📺 Watch on YouTube
+                  </button>
+                  <button
+                    className="csv-btn zoom-csv-btn"
+                    onClick={() => downloadCSV(zoomedFrame.video_id, zoomedFrame.keyframe_num)}
+                  >
+                    📊 Download CSV
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
