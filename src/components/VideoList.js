@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 
-const VideoList = ({ items, onExploreVideo }) => {
-  const [sortBy, setSortBy] = useState('score'); // 'name', 'score', 'frames'
+const VideoList = ({ items, onExploreVideo, sortBy, setSortBy }) => {
   
   if (!items || items.length === 0) {
     return null;
@@ -34,11 +33,14 @@ const VideoList = ({ items, onExploreVideo }) => {
       
       <div className="grid">
         {sortedItems.map((video, i) => {
-        // Use YouTube thumbnail if available, fallback to first keyframe image
-        const thumbnailSrc = video.thumbnail_url || 
-          (video.keyframes && video.keyframes[0] 
-            ? video.keyframes[0].image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw='
-            : 'data:image/gif;base64,R0lGODlhAQABAAAAACw=');
+        // Show highest-scoring keyframe image as thumbnail
+        let bestFrame = null;
+        if (video.keyframes && video.keyframes.length > 0) {
+          bestFrame = [...video.keyframes].sort((a, b) => b.confidence_score - a.confidence_score)[0];
+        }
+        const thumbnailSrc = (bestFrame && bestFrame.image_url) 
+          || video.thumbnail_url 
+          || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
 
         return (
           <div 
@@ -49,12 +51,12 @@ const VideoList = ({ items, onExploreVideo }) => {
             <img
               className="thumb"
               src={thumbnailSrc}
-              alt={`${video.video_id} YouTube thumbnail`}
+              alt={`${video.video_id} best keyframe`}
               loading="lazy"
               onError={(e) => { 
-                // Fallback to keyframe image if YouTube thumbnail fails
-                if (video.keyframes && video.keyframes[0] && video.keyframes[0].image_url && e.currentTarget.src !== video.keyframes[0].image_url) {
-                  e.currentTarget.src = video.keyframes[0].image_url;
+                // Fallback to any available keyframe or blank
+                if (bestFrame && bestFrame.image_url && e.currentTarget.src !== bestFrame.image_url) {
+                  e.currentTarget.src = bestFrame.image_url;
                 } else {
                   e.currentTarget.style.opacity = 0.5; 
                   e.currentTarget.alt = 'Preview unavailable'; 

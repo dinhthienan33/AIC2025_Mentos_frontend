@@ -3,6 +3,8 @@ import React from 'react';
 const SearchForm = ({
   query,
   setQuery,
+  csvBaseName,
+  setCsvBaseName,
   k,
   setK,
   scoreThreshold,
@@ -15,6 +17,19 @@ const SearchForm = ({
   onSearch,
   onCancel
 }) => {
+  const handleTxtUpload = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const nameNoExt = (file.name || '').replace(/\.[^/.]+$/, '');
+    try {
+      const text = await file.text();
+      setQuery(text);
+    } catch (err) {
+      // ignore read errors
+    }
+    // set CSV base name from file name
+    setCsvBaseName(nameNoExt || 'query');
+  };
   const handleSubmit = (e) => {
     e.preventDefault();
     onSearch();
@@ -31,6 +46,10 @@ const SearchForm = ({
   return (
     <>
       <form className="search" onSubmit={handleSubmit}>
+        <div className="control-group" style={{ marginBottom: '8px' }}>
+          <label style={{ display: 'block' }}>Upload .txt (optional):</label>
+          <input type="file" accept=".txt,text/plain" onChange={handleTxtUpload} />
+        </div>
         <textarea
           placeholder={temporalSearch ? "Describe a sequence of events (e.g., 'train running, then vehicles waiting, then people closing barriers')" : "Describe what you're looking for..."}
           value={query}
@@ -39,6 +58,15 @@ const SearchForm = ({
           rows={6}
           style={{ resize: 'vertical', whiteSpace: 'pre-wrap', minHeight: '140px' }}
         />
+        <div className="control-group" style={{ margin: '8px 0' }}>
+          <label>Query name (used for CSV filename when no file uploaded):</label>
+          <input
+            type="text"
+            placeholder="enter a short name"
+            value={csvBaseName}
+            onChange={(e) => setCsvBaseName(e.target.value)}
+          />
+        </div>
         <button
           type="button"
           onClick={onSearch}

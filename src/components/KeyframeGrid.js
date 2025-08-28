@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy }) => {
+const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [zoomedFrame, setZoomedFrame] = useState(null);
   
   if (!selectedVideoId || !videoData[selectedVideoId]) {
@@ -10,17 +10,42 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
   const sortBy = externalSortBy || 'score';
   const video = videoData[selectedVideoId];
 
-  const navigateToVideo = (videoUrl) => {
-    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+  const buildUrlWithTime = (urlString, seconds) => {
+    try {
+      if (!urlString) return urlString;
+      const url = new URL(urlString);
+      // Prefer t param in seconds for YouTube watch URLs
+      const isYouTube = /youtube\.com|youtu\.be/.test(url.hostname);
+      if (isYouTube) {
+        // Remove existing time params
+        url.searchParams.delete('t');
+        url.searchParams.delete('start');
+        const t = Math.max(0, Math.floor(seconds || 0));
+        url.searchParams.set('t', `${t}s`);
+        return url.toString();
+      }
+      // Generic fallback: add t seconds param
+      const t = Math.max(0, Math.floor(seconds || 0));
+      url.searchParams.set('t', `${t}`);
+      return url.toString();
+    } catch (_) {
+      return urlString;
+    }
+  };
+
+  const navigateToVideo = (videoUrl, seconds) => {
+    const finalUrl = buildUrlWithTime(videoUrl, seconds);
+    window.open(finalUrl, '_blank', 'noopener,noreferrer');
   };
 
   const downloadCSV = (videoId, frameIdx) => {
-    const csvContent = `video_id,frame_idx\n${videoId},${frameIdx}`;
+    const csvContent = `${videoId},${frameIdx}`;
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const url = URL.createObjectURL(blob);
     link.setAttribute('href', url);
-    link.setAttribute('download', `${videoId}_frame_${frameIdx}.csv`);
+    const base = (csvBaseName && csvBaseName.trim().length > 0) ? csvBaseName.trim() : `${videoId}`;
+    link.setAttribute('download', `${base}.csv`);
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
@@ -101,7 +126,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                     className="youtube-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigateToVideo(video.video_url);
+                      navigateToVideo(video.video_url, keyframe.timestamp);
                     }}
                   >
                     📺 YouTube
@@ -155,7 +180,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                 <div className="zoom-frame-actions">
                   <button
                     className="youtube-btn zoom-youtube-btn"
-                    onClick={() => navigateToVideo(video.video_url)}
+                    onClick={() => navigateToVideo(video.video_url, zoomedFrame.timestamp)}
                   >
                     📺 Watch on YouTube
                   </button>
@@ -166,6 +191,30 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                     📊 Download CSV
                   </button>
                 </div>
+                {video && video.keyframes && (
+                  <div style={{ marginTop: '10px' }}>
+                    <div style={{ color: '#a2b0c6', marginBottom: '6px' }}>All frames in this video</div>
+                    <div style={{ display: 'flex', overflowX: 'auto', gap: '8px', paddingBottom: '6px' }}>
+                      {video.keyframes.map((kf, idx) => {
+                        const kfSrc = kf.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
+                        const isActive = kf.keyframe_num === zoomedFrame.keyframe_num;
+                        return (
+                          <div
+                            key={`strip-${video.video_id}-${idx}`}
+                            style={{ minWidth: '120px', border: isActive ? '2px solid #4da3ff' : '1px solid #2b3b52', borderRadius: '6px', padding: '2px' }}
+                          >
+                            <img
+                              src={kfSrc}
+                              alt={`${video.video_id} - Frame ${kf.keyframe_num}`}
+                              style={{ width: '120px', height: '68px', objectFit: 'cover', cursor: 'pointer', borderRadius: '4px' }}
+                              onClick={() => setZoomedFrame(kf)}
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

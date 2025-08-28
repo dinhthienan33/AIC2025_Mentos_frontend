@@ -20,6 +20,9 @@ const SearchInterface = ({ onOpenVideo }) => {
   const [selectedVideoId, setSelectedVideoId] = useState(null);
   const [videoData, setVideoData] = useState({}); // Store grouped video data
   const [frameSortBy, setFrameSortBy] = useState('score'); // shared frames sort
+  const [videoListSortBy, setVideoListSortBy] = useState('score'); // persist video list sort
+  const [csvBaseName, setCsvBaseName] = useState('');
+  const [videosScrollY, setVideosScrollY] = useState(0);
 
   // Filtering UI state
   const [filteringEnabled, setFilteringEnabled] = useState(false);
@@ -34,6 +37,10 @@ const SearchInterface = ({ onOpenVideo }) => {
     setError("");
     setProcessingTime(null);
     if (!query.trim()) return;
+    if (!csvBaseName || !csvBaseName.trim()) {
+      setError('Please set a query name (or upload a .txt file).');
+      return;
+    }
     
     // Validate and set defaults for empty fields
     const finalK = k === '' || k === null || k === undefined ? 10 : parseInt(k) || 10;
@@ -138,6 +145,10 @@ const SearchInterface = ({ onOpenVideo }) => {
   };
 
   const exploreVideo = (videoId) => {
+    try {
+      const y = window.pageYOffset || document.documentElement.scrollTop || 0;
+      setVideosScrollY(y);
+    } catch (_) {}
     setSelectedVideoId(videoId);
     setVideoView('keyframes');
   };
@@ -145,6 +156,11 @@ const SearchInterface = ({ onOpenVideo }) => {
   const backToVideos = () => {
     setVideoView('list');
     setSelectedVideoId(null);
+    setTimeout(() => {
+      try {
+        window.scrollTo(0, videosScrollY || 0);
+      } catch (_) {}
+    }, 0);
   };
 
   const buildFilteringPayload = () => {
@@ -253,6 +269,8 @@ const SearchInterface = ({ onOpenVideo }) => {
         <SearchForm
           query={query}
           setQuery={setQuery}
+          csvBaseName={csvBaseName}
+          setCsvBaseName={setCsvBaseName}
           k={k}
           setK={setK}
           scoreThreshold={scoreThreshold}
@@ -366,7 +384,9 @@ const SearchInterface = ({ onOpenVideo }) => {
             videoView === 'list' ? (
               <VideoList 
                 items={items} 
-                onExploreVideo={exploreVideo} 
+                onExploreVideo={exploreVideo}
+                sortBy={videoListSortBy}
+                setSortBy={setVideoListSortBy}
               />
             ) : (
               <KeyframeGrid
@@ -374,6 +394,7 @@ const SearchInterface = ({ onOpenVideo }) => {
                 videoData={videoData}
                 onBackToVideos={backToVideos}
                 onOpenVideo={onOpenVideo}
+                csvBaseName={csvBaseName}
                 sortBy={frameSortBy}
               />
             )
@@ -382,6 +403,7 @@ const SearchInterface = ({ onOpenVideo }) => {
             <AllFramesView 
               videoData={videoData}
               onOpenVideo={onOpenVideo}
+              csvBaseName={csvBaseName}
               sortBy={frameSortBy}
             />
           )}
