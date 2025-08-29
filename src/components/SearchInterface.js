@@ -33,6 +33,12 @@ const SearchInterface = ({ onOpenVideo }) => {
   const [ocrValues, setOcrValues] = useState(['']);
   const [asrValues, setAsrValues] = useState(['']);
 
+  // Exclusion controls
+  const [excludeByGroup, setExcludeByGroup] = useState(false);
+  const [excludeGroupsText, setExcludeGroupsText] = useState(""); // comma-separated groups e.g. L21,L22
+  const [excludeByVideo, setExcludeByVideo] = useState(false);
+  const [excludeVidIdsText, setExcludeVidIdsText] = useState(""); // comma-separated video ids e.g. L21_V001,L22_V003
+
   const doSearch = async () => {
     setError("");
     setProcessingTime(null);
@@ -63,6 +69,16 @@ const SearchInterface = ({ onOpenVideo }) => {
       setVideoData({});
 
       // Real API call
+      // Build filtering object if enabled
+      const listFromValues = (values) =>
+        (values || []).map(v => (v || '').trim()).filter(v => v.length > 0);
+      const filtering = {};
+      if (filteringEnabled) {
+        if (filterOd) filtering.od_text = listFromValues(odValues);
+        if (filterOcr) filtering.ocr_text = listFromValues(ocrValues);
+        if (filterAsr) filtering.asr_text = listFromValues(asrValues);
+      }
+
       const fetchPromise = fetch('http://localhost:8000/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -71,7 +87,15 @@ const SearchInterface = ({ onOpenVideo }) => {
           top_k: finalK,
           score_threshold: finalScoreThreshold,
           model_name: modelName,
-          search_method: temporalSearch ? "temporal" : "normal"
+          search_method: filteringEnabled ? "filtering" : (temporalSearch ? "temporal" : "normal"),
+          filtering: filtering && Object.keys(filtering).length > 0 ? filtering : undefined,
+          // New exclusion fields
+          exclude_groups: excludeByGroup
+            ? (excludeGroupsText || "").split(',').map(s => s.trim()).filter(Boolean)
+            : undefined,
+          exclude_vid_id: excludeByVideo
+            ? (excludeVidIdsText || "").split(',').map(s => s.trim()).filter(Boolean)
+            : undefined
         }),
         signal: controller.signal
       });
@@ -335,6 +359,47 @@ const SearchInterface = ({ onOpenVideo }) => {
               </div>
             </div>
           )}
+
+          {/* Exclusion controls */}
+          <div className="control-group" style={{ marginTop: '12px' }}>
+            <label>
+              <input
+                type="checkbox"
+                checked={excludeByGroup}
+                onChange={(e) => setExcludeByGroup(e.target.checked)}
+              />
+              exclude by group
+            </label>
+            {excludeByGroup && (
+              <input
+                type="text"
+                placeholder="e.g. L21,L22"
+                value={excludeGroupsText}
+                onChange={(e) => setExcludeGroupsText(e.target.value)}
+                style={{ marginTop: '6px' }}
+              />
+            )}
+          </div>
+
+          <div className="control-group">
+            <label>
+              <input
+                type="checkbox"
+                checked={excludeByVideo}
+                onChange={(e) => setExcludeByVideo(e.target.checked)}
+              />
+              exclude by video id
+            </label>
+            {excludeByVideo && (
+              <input
+                type="text"
+                placeholder="e.g. L21_V001,L22_V003"
+                value={excludeVidIdsText}
+                onChange={(e) => setExcludeVidIdsText(e.target.value)}
+                style={{ marginTop: '6px' }}
+              />
+            )}
+          </div>
         </div>
       </aside>
 
