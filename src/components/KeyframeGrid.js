@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import VideoPlayerModal from './VideoPlayModal';
 
 const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [zoomedFrame, setZoomedFrame] = useState(null);
-  
+  const [player, setPlayer] = useState({ open: false, url: '', t: 0 });
+
   if (!selectedVideoId || !videoData[selectedVideoId]) {
     return <div className="status">No video selected</div>;
   }
@@ -33,9 +35,8 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
     }
   };
 
-  const navigateToVideo = (videoUrl, seconds) => {
-    const finalUrl = buildUrlWithTime(videoUrl, seconds);
-    window.open(finalUrl, '_blank', 'noopener,noreferrer');
+  const openPlayer = (videoUrl, seconds) => {
+    setPlayer({ open: true, url: videoUrl, t: Math.max(0, Math.floor(seconds || 0)) });
   };
 
   const downloadCSV = (videoId, frameIdx) => {
@@ -71,7 +72,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
       <button className="back-button" onClick={onBackToVideos}>
         ← Back to Videos
       </button>
-      
+
       <div className="keyframes-header">
         <div>
           <h2 style={{ margin: 0, color: '#eaf0f6' }}>
@@ -86,31 +87,31 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
       <div className="youtube-section">
         <button
           className="video-link-btn youtube-top-btn"
-          onClick={() => navigateToVideo(video.video_url)}
+          onClick={() => openPlayer(video.video_url)}
         >
-          📺 Watch on YouTube
+          📺 Watch 
         </button>
       </div>
 
       {/* Sort controls removed; now in top toolbar */}
-      
+
       <div className="grid">
         {sortedKeyframes.map((keyframe, i) => {
           const src = keyframe.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
           const score = keyframe.confidence_score ? keyframe.confidence_score.toFixed(3) : '';
           const timestamp = keyframe.timestamp ? keyframe.timestamp.toFixed(1) : 'N/A';
-          
+
           return (
             <div className="card" key={`keyframe-${i}`}>
-                             <img
+              <img
                 className="thumb keyframe-thumb"
                 src={src}
                 alt={`${keyframe.video_id} - Frame ${keyframe.keyframe_num}`}
                 loading="lazy"
                 onClick={() => setZoomedFrame(keyframe)}
-                onError={(e) => { 
-                  e.currentTarget.style.opacity = 0.5; 
-                  e.currentTarget.alt = 'Preview unavailable'; 
+                onError={(e) => {
+                  e.currentTarget.style.opacity = 0.5;
+                  e.currentTarget.alt = 'Preview unavailable';
                 }}
               />
               <div className="meta">
@@ -126,10 +127,10 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                     className="youtube-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigateToVideo(video.video_url, keyframe.timestamp);
+                      openPlayer(video.video_url, keyframe.timestamp);
                     }}
                   >
-                    📺 YouTube
+                    📺 Play
                   </button>
                   <button
                     className="csv-btn"
@@ -155,8 +156,8 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
               <div className="zoom-frame-title">
                 Frame {zoomedFrame.keyframe_num} - {zoomedFrame.video_id}
               </div>
-              <button 
-                className="zoom-frame-close" 
+              <button
+                className="zoom-frame-close"
                 onClick={() => setZoomedFrame(null)}
               >
                 ×
@@ -180,9 +181,9 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                 <div className="zoom-frame-actions">
                   <button
                     className="youtube-btn zoom-youtube-btn"
-                    onClick={() => navigateToVideo(video.video_url, zoomedFrame.timestamp)}
+                    onClick={() => openPlayer(video.video_url, zoomedFrame.timestamp)}
                   >
-                    📺 Watch on YouTube
+                    📺 Play
                   </button>
                   <button
                     className="csv-btn zoom-csv-btn"
@@ -219,6 +220,13 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
             </div>
           </div>
         </div>
+      )}
+      {player.open && (
+        <VideoPlayerModal
+          videoUrl={player.url}
+          startSeconds={player.t}
+          onClose={() => setPlayer({ open: false, url: '', t: 0 })}
+        />
       )}
     </>
   );

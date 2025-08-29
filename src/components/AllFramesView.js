@@ -1,13 +1,23 @@
 import React, { useState } from 'react';
+import VideoPlayerModal from './VideoPlayModal'
 
 const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [sortByState, setSortByState] = useState('score'); // kept for backward compat, unused when external provided
   const sortBy = externalSortBy || sortByState;
   const [zoomedFrame, setZoomedFrame] = useState(null);
-  
+  const [player, setPlayer] = useState({ open: false, url: '', t: 0 });
+
   if (!videoData || Object.keys(videoData).length === 0) {
     return <div className="status">No frames available</div>;
   }
+
+  const openPlayer = (videoUrl, seconds) => {
+    setPlayer({
+      open: true,
+      url: videoUrl,
+      t: Math.max(0, Math.floor(seconds || 0)),
+    });
+  };
 
   // Collect all frames from all videos
   const allFrames = [];
@@ -80,13 +90,13 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
   return (
     <>
       {/* Sort controls moved to toolbar */}
-      
+
       <div className="grid">
         {sortedFrames.map((frame, i) => {
           const src = frame.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
           const score = frame.confidence_score ? frame.confidence_score.toFixed(3) : '';
           const timestamp = frame.timestamp ? frame.timestamp.toFixed(1) : 'N/A';
-          
+
           return (
             <div className="card" key={`frame-${i}`}>
               <img
@@ -95,9 +105,9 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                 alt={`${frame.video_id} - Frame ${frame.keyframe_num}`}
                 loading="lazy"
                 onClick={() => setZoomedFrame(frame)}
-                onError={(e) => { 
-                  e.currentTarget.style.opacity = 0.5; 
-                  e.currentTarget.alt = 'Preview unavailable'; 
+                onError={(e) => {
+                  e.currentTarget.style.opacity = 0.5;
+                  e.currentTarget.alt = 'Preview unavailable';
                 }}
               />
               <div className="meta">
@@ -118,7 +128,7 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                     className="youtube-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      navigateToVideo(frame.video_url, frame.timestamp);
+                      openPlayer(frame.video_url, frame.timestamp);
                     }}
                   >
                     📺 YouTube
@@ -134,7 +144,7 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                   </button>
                 </div>
               </div>
-              
+
             </div>
           );
         })}
@@ -148,8 +158,8 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
               <div className="zoom-frame-title">
                 Frame {zoomedFrame.keyframe_num} - {zoomedFrame.video_id}
               </div>
-              <button 
-                className="zoom-frame-close" 
+              <button
+                className="zoom-frame-close"
                 onClick={() => setZoomedFrame(null)}
               >
                 ×
@@ -173,9 +183,9 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                 <div className="zoom-frame-actions">
                   <button
                     className="youtube-btn zoom-youtube-btn"
-                    onClick={() => navigateToVideo(zoomedFrame.video_url, zoomedFrame.timestamp)}
+                    onClick={() => openPlayer(zoomedFrame.video_url, zoomedFrame.timestamp)}
                   >
-                    📺 Watch on YouTube
+                    📺 Watch 
                   </button>
                   <button
                     className="csv-btn zoom-csv-btn"
@@ -212,6 +222,13 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
             </div>
           </div>
         </div>
+      )}
+      {player.open && (
+        <VideoPlayerModal
+          videoUrl={player.url}
+          startSeconds={player.t}
+          onClose={() => setPlayer({ open: false, url: '', t: 0 })}
+        />
       )}
     </>
   );
