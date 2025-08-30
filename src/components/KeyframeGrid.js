@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import VideoPlayerModal from './VideoPlayModal';
 
 const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [zoomedFrame, setZoomedFrame] = useState(null);
-  const [player, setPlayer] = useState({ open: false, url: '', t: 0 });
+  const [player, setPlayer] = useState({ open: false, url: '', t: 0, markers: [] });
 
   if (!selectedVideoId || !videoData[selectedVideoId]) {
     return <div className="status">No video selected</div>;
@@ -35,8 +35,20 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
     }
   };
 
-  const openPlayer = (videoUrl, seconds) => {
-    setPlayer({ open: true, url: videoUrl, t: Math.max(0, Math.floor(seconds || 0)) });
+  const openPlayer = (videoUrl, seconds, keyframes = []) => {
+    const markers = Array.from(
+      new Set(
+        (keyframes || [])
+          .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
+          .filter(n => Number.isFinite(n))
+      )
+    ).sort((a, b) => a - b);
+    setPlayer({
+      open: true,
+      url: videoUrl,
+      t: Math.max(0, Math.floor(seconds || 0)),
+      markers,
+    });
   };
 
   const downloadCSV = (videoId, frameIdx) => {
@@ -87,7 +99,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
       <div className="youtube-section">
         <button
           className="video-link-btn youtube-top-btn"
-          onClick={() => openPlayer(video.video_url)}
+          onClick={() => openPlayer(video.video_url, (zoomedFrame?.timestamp ?? 0), video.keyframes)}
         >
           📺 Watch 
         </button>
@@ -127,7 +139,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                     className="youtube-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openPlayer(video.video_url, keyframe.timestamp);
+                      openPlayer(video.video_url, (keyframe?.timestamp ?? 0), video.keyframes);
                     }}
                   >
                     📺 Play
@@ -225,7 +237,8 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
         <VideoPlayerModal
           videoUrl={player.url}
           startSeconds={player.t}
-          onClose={() => setPlayer({ open: false, url: '', t: 0 })}
+          markers={player.markers}
+          onClose={() => setPlayer({ open: false, url: '', t: 0, markers: [] })}
         />
       )}
     </>

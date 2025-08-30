@@ -11,13 +11,21 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
     return <div className="status">No frames available</div>;
   }
 
-  const openPlayer = (videoUrl, seconds) => {
-    setPlayer({
-      open: true,
-      url: videoUrl,
-      t: Math.max(0, Math.floor(seconds || 0)),
-    });
-  };
+  const openPlayer = (videoUrl, seconds, keyframes = []) => {
+   const markers = Array.from(
+     new Set(
+       (keyframes || [])
+         .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
+         .filter(n => Number.isFinite(n))
+     )
+   ).sort((a,b) => a - b);
+   setPlayer({
+     open: true,
+     url: videoUrl,
+     t: Math.max(0, Math.floor(seconds || 0)),
+     markers,
+   });
+ };
 
   // Collect all frames from all videos
   const allFrames = [];
