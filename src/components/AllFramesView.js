@@ -5,27 +5,37 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
   const [sortByState, setSortByState] = useState('score'); // kept for backward compat, unused when external provided
   const sortBy = externalSortBy || sortByState;
   const [zoomedFrame, setZoomedFrame] = useState(null);
-  const [player, setPlayer] = useState({ open: false, url: '', t: 0 });
+  const [player, setPlayer] = useState({
+    open: false,
+    url: '',
+    t: 0,
+    markers: [],
+    keyframeRefs: [],
+    videoId: '',
+    frameRate: undefined,
+  });
 
   if (!videoData || Object.keys(videoData).length === 0) {
     return <div className="status">No frames available</div>;
   }
 
-  const openPlayer = (videoUrl, seconds, keyframes = []) => {
-   const markers = Array.from(
-     new Set(
-       (keyframes || [])
-         .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
-         .filter(n => Number.isFinite(n))
-     )
-   ).sort((a,b) => a - b);
-   setPlayer({
-     open: true,
-     url: videoUrl,
-     t: Math.max(0, Math.floor(seconds || 0)),
-     markers,
-   });
- };
+  const openPlayer = (videoUrl, seconds, keyframes = [], videoId = '', frameRate) => {
+    const markers = Array.from(new Set((keyframes || [])
+      .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
+      .filter(n => Number.isFinite(n)))).sort((a, b) => a - b);
+
+    setPlayer({
+      open: true,
+      url: videoUrl,
+      t: Math.max(0, Math.floor(seconds || 0)),
+      markers,
+      keyframeRefs: keyframes,
+      videoId: String(videoId || ''),
+      frameRate: typeof frameRate === 'number' ? frameRate : undefined,
+    });
+  };
+
+
 
   // Collect all frames from all videos
   const allFrames = [];
@@ -104,7 +114,8 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
           const src = frame.image_url || 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
           const score = frame.confidence_score ? frame.confidence_score.toFixed(3) : '';
           const timestamp = frame.timestamp ? frame.timestamp.toFixed(1) : 'N/A';
-
+          const video = videoData[frame.video_id] || {};
+          const fps = video.frame_rate;
           return (
             <div className="card" key={`frame-${i}`}>
               <img
@@ -136,7 +147,13 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                     className="youtube-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      openPlayer(frame.video_url, frame.timestamp);
+                      openPlayer(
+                        frame.video_url,
+                        frame.timestamp,
+                        video.keyframes || [],
+                        frame.video_id,
+                        fps
+                      );
                     }}
                   >
                     📺 YouTube
@@ -191,9 +208,19 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                 <div className="zoom-frame-actions">
                   <button
                     className="youtube-btn zoom-youtube-btn"
-                    onClick={() => openPlayer(zoomedFrame.video_url, zoomedFrame.timestamp)}
+                    onClick={() => {
+                      const video = videoData[zoomedFrame.video_id] || {};
+                      openPlayer(
+                        zoomedFrame.video_url,
+                        zoomedFrame.timestamp,
+                        video.keyframes || [],
+                        zoomedFrame.video_id,
+                        video.frame_rate
+                      );
+                    }}
+
                   >
-                    📺 Watch 
+                    📺 Watch
                   </button>
                   <button
                     className="csv-btn zoom-csv-btn"
@@ -235,7 +262,22 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
         <VideoPlayerModal
           videoUrl={player.url}
           startSeconds={player.t}
-          onClose={() => setPlayer({ open: false, url: '', t: 0 })}
+          markers={player.markers}
+          keyframeRefs={player.keyframeRefs}
+          videoId={player.videoId}
+          frameRate={player.frameRate}
+          csvBaseName={csvBaseName}
+          onClose={() =>
+            setPlayer({
+              open: false,
+              url: '',
+              t: 0,
+              markers: [],
+              keyframeRefs: [],
+              videoId: '',
+              frameRate: undefined,
+            })
+          }
         />
       )}
     </>

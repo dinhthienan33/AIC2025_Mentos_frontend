@@ -36,18 +36,19 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
   };
 
   const openPlayer = (videoUrl, seconds, keyframes = []) => {
-    const markers = Array.from(
-      new Set(
-        (keyframes || [])
-          .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
-          .filter(n => Number.isFinite(n))
-      )
-    ).sort((a, b) => a - b);
+    const keyframeRefs = (keyframes || [])
+      .map(k => ({
+        sec: Math.max(0, Math.floor(k?.timestamp || 0)),
+        frameIdx: k?.keyframe_num
+      }))
+      .filter(x => Number.isFinite(x.sec) && Number.isFinite(x.frameIdx))
+      .sort((a, b) => a.sec - b.sec);
     setPlayer({
       open: true,
       url: videoUrl,
       t: Math.max(0, Math.floor(seconds || 0)),
-      markers,
+      markers: keyframeRefs.map(x => x.sec),   // vẫn dùng cho marker bar
+      keyframeRefs: keyframes,                             // dùng để resolve frameIdx khi Add
     });
   };
 
@@ -101,7 +102,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
           className="video-link-btn youtube-top-btn"
           onClick={() => openPlayer(video.video_url, (zoomedFrame?.timestamp ?? 0), video.keyframes)}
         >
-          📺 Watch 
+          📺 Watch
         </button>
       </div>
 
@@ -193,7 +194,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                 <div className="zoom-frame-actions">
                   <button
                     className="youtube-btn zoom-youtube-btn"
-                    onClick={() => openPlayer(video.video_url, zoomedFrame.timestamp)}
+                    onClick={() => openPlayer(video.video_url, zoomedFrame.timestamp, video.keyframes)}
                   >
                     📺 Play
                   </button>
@@ -238,7 +239,10 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
           videoUrl={player.url}
           startSeconds={player.t}
           markers={player.markers}
-          onClose={() => setPlayer({ open: false, url: '', t: 0, markers: [] })}
+          keyframeRefs={player.keyframeRefs}
+          videoId={selectedVideoId}
+          csvBaseName={csvBaseName}
+          onClose={() => setPlayer({ open: false, url: '', t: 0, markers: [], keyframeRefs: [] })}
         />
       )}
     </>
