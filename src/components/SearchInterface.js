@@ -3,8 +3,10 @@ import SearchForm from './SearchForm';
 import VideoList from './VideoList';
 import KeyframeGrid from './KeyframeGrid';
 import AllFramesView from './AllFramesView';
+import ASRSearchTab from './ASRSearchTab';
 
 const SearchInterface = ({ onOpenVideo }) => {
+  const [activeTab, setActiveTab] = useState('visual'); // 'visual' or 'asr'
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
@@ -405,7 +407,27 @@ const SearchInterface = ({ onOpenVideo }) => {
 
       <main className="content">
         <div className="container">
-          <h1>Visual Search</h1>
+          {/* Tab Navigation */}
+          <div className="tab-navigation">
+            <button
+              className={`tab-button ${activeTab === 'visual' ? 'active' : ''}`}
+              onClick={() => setActiveTab('visual')}
+            >
+              Visual Search
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'asr' ? 'active' : ''}`}
+              onClick={() => setActiveTab('asr')}
+            >
+              ASR Search
+            </button>
+          </div>
+
+          {activeTab === 'asr' ? (
+            <ASRSearchTab />
+          ) : (
+            <>
+              <h1>Visual Search</h1>
 
           {/* Top toolbar with View Mode and Sort together */}
           {!loading && items.length > 0 && (
@@ -471,6 +493,8 @@ const SearchInterface = ({ onOpenVideo }) => {
               csvBaseName={csvBaseName}
               sortBy={frameSortBy}
             />
+          )}
+            </>
           )}
         </div>
       </main>
