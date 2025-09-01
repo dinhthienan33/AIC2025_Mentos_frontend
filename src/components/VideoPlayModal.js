@@ -161,7 +161,7 @@ const VideoPlayerModal = ({
             return () => clearInterval(id);
         }
     }, [isYouTube, apiReady]);
-    
+
     useEffect(() => {
         // chỉ poll khi player đã ready
         if (!(ytReady || htmlVideoRef.current)) return;
@@ -197,20 +197,56 @@ const VideoPlayerModal = ({
         };
     }, [keyframeRefs]);
 
+    // Suy ra FPS từ các keyframe của model
+    const inferredFps = useMemo(() => {
+        // lấy các mốc hợp lệ (có timestamp & keyframe_num)
+        const refs = Array.from(keyframeRefs || [])
+            .filter(k => Number.isFinite(k?.timestamp) && Number.isFinite(k?.keyframe_num))
+            .sort((a, b) => a.timestamp - b.timestamp);
+
+        if (refs.length < 2) return undefined;
+
+        // tính fps vi phân: Δframe / Δtime giữa các mốc liên tiếp
+        const diffs = [];
+        for (let i = 1; i < refs.length; i++) {
+            const dt = refs[i].timestamp - refs[i - 1].timestamp;
+            const df = refs[i].keyframe_num - refs[i - 1].keyframe_num;
+            if (dt > 0 && Number.isFinite(df)) {
+                diffs.push(df / dt);
+            }
+        }
+        if (!diffs.length) return undefined;
+
+        // median chống nhiễu
+        diffs.sort((a, b) => a - b);
+        const mid = Math.floor(diffs.length / 2);
+        const median = diffs.length % 2 ? diffs[mid] : (diffs[mid - 1] + diffs[mid]) / 2;
+
+        // snap về các fps phổ biến (ưu tiên 25 vs 30 như yêu cầu)
+        const candidates = [25, 30, 24, 50, 60];
+        let best = candidates[0], bestDiff = Math.abs(median - candidates[0]);
+        for (const c of candidates) {
+            const d = Math.abs(median - c);
+            if (d < bestDiff) { best = c; bestDiff = d; }
+        }
+        return best;
+    }, [keyframeRefs]);
+
     // === Add keyframe (theo model)
     const addKeyframe = () => {
-        const t = getCurrentTime();               // giây hiện tại
-        const fps = frameRate || 30;              // nếu không truyền thì mặc định 30
-        const frameIdx = Math.floor(t * fps);     // công thức của bạn
+        const t = getCurrentTime();                 // giây hiện tại (float)
+        const fpsToUse = inferredFps ?? frameRate ?? 30; // ưu tiên FPS suy ra -> prop frameRate -> 30
+        const frameIdx = Math.floor(t * fpsToUse);  // công thức của bạn
+
         const id = (videoId && String(videoId)) || 'video';
         const line = `${id},${frameIdx}`;
 
-        setPicked(prev => {
-            return prev.some(p => p.line === line)
-                ? prev
-                : [...prev, { line, sec: Math.floor(t), frameIdx }];
-        });
+        setPicked(prev => (
+            prev.some(p => p.line === line) ? prev : [...prev, { line, sec: Math.floor(t), frameIdx }]
+        ));
 
+        // KHÔNG thêm marker mới lên thanh — giữ nguyên markers mặc định
+        // (nên bỏ mọi setCustomMarks trong addKeyframe)
     };
 
 
