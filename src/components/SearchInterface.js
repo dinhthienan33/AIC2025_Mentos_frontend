@@ -40,6 +40,7 @@ const SearchInterface = ({ onOpenVideo }) => {
   const [excludeGroupsText, setExcludeGroupsText] = useState(""); // comma-separated groups e.g. L21,L22
   const [excludeByVideo, setExcludeByVideo] = useState(false);
   const [excludeVidIdsText, setExcludeVidIdsText] = useState(""); // comma-separated video ids e.g. L21_V001,L22_V003
+  const [batch, setBatch] = useState(1); // batch selection: 1 or 2
 
   const doSearch = async () => {
     setError("");
@@ -97,7 +98,8 @@ const SearchInterface = ({ onOpenVideo }) => {
             : undefined,
           exclude_vid_id: excludeByVideo
             ? (excludeVidIdsText || "").split(',').map(s => s.trim()).filter(Boolean)
-            : undefined
+            : undefined,
+          batch: batch
         }),
         signal: controller.signal
       });
@@ -305,6 +307,8 @@ const SearchInterface = ({ onOpenVideo }) => {
           setModelName={setModelName}
           temporalSearch={temporalSearch}
           setTemporalSearch={setTemporalSearch}
+          batch={batch}
+          setBatch={setBatch}
           loading={loading}
           onSearch={doSearch}
           onCancel={cancelSearch}

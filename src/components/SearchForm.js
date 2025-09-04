@@ -13,6 +13,8 @@ const SearchForm = ({
   setModelName,
   temporalSearch,
   setTemporalSearch,
+  batch,
+  setBatch,
   loading,
   onSearch,
   onCancel
@@ -155,6 +157,32 @@ const SearchForm = ({
           </label>
           <div className="control-help">
             Break down complex queries into sequential events
+          </div>
+        </div>
+
+        <div className="control-group">
+          <label>Batch:</label>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input
+                type="radio"
+                name="batch"
+                value={1}
+                checked={batch === 1}
+                onChange={(e) => setBatch(parseInt(e.target.value))}
+              />
+              Batch 1
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <input
+                type="radio"
+                name="batch"
+                value={2}
+                checked={batch === 2}
+                onChange={(e) => setBatch(parseInt(e.target.value))}
+              />
+              Batch 2
+            </label>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { getSafeVideoUrl, isValidVideoUrl } from '../utils/videoUtils';
 
 const VideoPlayer = ({ video, onClose }) => {
   const formatTime = (seconds) => {
@@ -14,8 +15,13 @@ const VideoPlayer = ({ video, onClose }) => {
   };
 
   const navigateToVideo = (videoUrl) => {
-    window.open(videoUrl, '_blank', 'noopener,noreferrer');
+    const safeUrl = getSafeVideoUrl(videoUrl);
+    window.open(safeUrl, '_blank', 'noopener,noreferrer');
   };
+
+  // Get safe video URL for iframe
+  const safeVideoUrl = getSafeVideoUrl(video.video_url);
+  const isVideoUrlValid = isValidVideoUrl(video.video_url);
 
   return (
     <div className="video-player-overlay">
@@ -30,9 +36,21 @@ const VideoPlayer = ({ video, onClose }) => {
         </div>
         
         <div className="video-player-content">
+          {!isVideoUrlValid && (
+            <div className="video-warning" style={{ 
+              padding: '10px', 
+              backgroundColor: '#fff3cd', 
+              border: '1px solid #ffeaa7', 
+              borderRadius: '4px', 
+              marginBottom: '10px',
+              color: '#856404'
+            }}>
+              ⚠️ Video URL not available. Opening YouTube homepage instead.
+            </div>
+          )}
           <iframe
             className="video-iframe"
-            src={video.video_url}
+            src={safeVideoUrl}
             title={`${video.video_id} Video Player`}
             allowFullScreen
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -80,7 +98,7 @@ const VideoPlayer = ({ video, onClose }) => {
             className="play-video-btn"
             onClick={() => navigateToVideo(video.video_url)}
           >
-            🎥 Open in YouTube
+            {isVideoUrlValid ? '🎥 Open in YouTube' : '🎥 Open YouTube'}
           </button>
         </div>
       </div>

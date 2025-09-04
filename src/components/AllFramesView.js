@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import VideoPlayerModal from './VideoPlayModal'
+import VideoPlayerModal from './VideoPlayModal';
+import { getSafeVideoUrl, isValidVideoUrl } from '../utils/videoUtils';
 
 const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [sortByState, setSortByState] = useState('score'); // kept for backward compat, unused when external provided
@@ -20,13 +21,14 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
   }
 
   const openPlayer = (videoUrl, seconds, keyframes = [], videoId = '', frameRate) => {
+    const safeVideoUrl = getSafeVideoUrl(videoUrl);
     const markers = Array.from(new Set((keyframes || [])
       .map(k => Math.max(0, Math.floor(k?.timestamp || 0)))
       .filter(n => Number.isFinite(n)))).sort((a, b) => a - b);
 
     setPlayer({
       open: true,
-      url: videoUrl,
+      url: safeVideoUrl,
       t: Math.max(0, Math.floor(seconds || 0)),
       markers,
       keyframeRefs: keyframes,
@@ -156,7 +158,7 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                       );
                     }}
                   >
-                    📺 YouTube
+                    {isValidVideoUrl(frame.video_url) ? '📺 YouTube' : '📺 YouTube'}
                   </button>
                   <button
                     className="csv-btn"
@@ -220,7 +222,7 @@ const AllFramesView = ({ videoData, onOpenVideo, sortBy: externalSortBy, csvBase
                     }}
 
                   >
-                    📺 Watch
+                    {isValidVideoUrl(zoomedFrame.video_url) ? '📺 Watch' : '📺 YouTube'}
                   </button>
                   <button
                     className="csv-btn zoom-csv-btn"

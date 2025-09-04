@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import VideoPlayerModal from './VideoPlayModal';
+import { getSafeVideoUrl, isValidVideoUrl } from '../utils/videoUtils';
 
 const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo, sortBy: externalSortBy, csvBaseName }) => {
   const [zoomedFrame, setZoomedFrame] = useState(null);
@@ -36,6 +37,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
   };
 
   const openPlayer = (videoUrl, seconds, keyframes = []) => {
+    const safeVideoUrl = getSafeVideoUrl(videoUrl);
     const keyframeRefs = (keyframes || [])
       .map(k => ({
         sec: Math.max(0, Math.floor(k?.timestamp || 0)),
@@ -45,7 +47,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
       .sort((a, b) => a.sec - b.sec);
     setPlayer({
       open: true,
-      url: videoUrl,
+      url: safeVideoUrl,
       t: Math.max(0, Math.floor(seconds || 0)),
       markers: keyframeRefs.map(x => x.sec),   // vẫn dùng cho marker bar
       keyframeRefs: keyframes,                             // dùng để resolve frameIdx khi Add
@@ -102,7 +104,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
           className="video-link-btn youtube-top-btn"
           onClick={() => openPlayer(video.video_url, (zoomedFrame?.timestamp ?? 0), video.keyframes)}
         >
-          📺 Watch
+          {isValidVideoUrl(video.video_url) ? '📺 Watch' : '📺 YouTube'}
         </button>
       </div>
 
@@ -143,7 +145,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                       openPlayer(video.video_url, (keyframe?.timestamp ?? 0), video.keyframes);
                     }}
                   >
-                    📺 Play
+                    {isValidVideoUrl(video.video_url) ? '📺 Play' : '📺 YouTube'}
                   </button>
                   <button
                     className="csv-btn"
@@ -196,7 +198,7 @@ const KeyframeGrid = ({ selectedVideoId, videoData, onBackToVideos, onOpenVideo,
                     className="youtube-btn zoom-youtube-btn"
                     onClick={() => openPlayer(video.video_url, zoomedFrame.timestamp, video.keyframes)}
                   >
-                    📺 Play
+                    {isValidVideoUrl(video.video_url) ? '📺 Play' : '📺 YouTube'}
                   </button>
                   <button
                     className="csv-btn zoom-csv-btn"

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { getSafeVideoUrl, isValidVideoUrl } from '../utils/videoUtils';
 
 const ASRSearchTab = () => {
   const [query, setQuery] = useState("");
@@ -70,9 +71,8 @@ const ASRSearchTab = () => {
   };
 
   const openVideoUrl = (url) => {
-    if (url) {
-      window.open(url, '_blank');
-    }
+    const safeUrl = getSafeVideoUrl(url);
+    window.open(safeUrl, '_blank');
   };
 
   return (
@@ -158,15 +158,13 @@ const ASRSearchTab = () => {
                               {formatTime(segment.start_time)} - {formatTime(segment.end_time)} 
                               <span className="duration">({segment.duration.toFixed(2)}s)</span>
                             </span>
-                            {segment.video_url && (
-                              <button 
-                                className="video-link-button"
-                                onClick={() => openVideoUrl(segment.video_url)}
-                                title="Open video at this timestamp"
-                              >
-                                🎥 Watch
-                              </button>
-                            )}
+                            <button 
+                              className="video-link-button"
+                              onClick={() => openVideoUrl(segment.video_url)}
+                              title={isValidVideoUrl(segment.video_url) ? "Open video at this timestamp" : "Open YouTube (video URL not available)"}
+                            >
+                              {isValidVideoUrl(segment.video_url) ? '🎥 Watch' : '🎥 YouTube'}
+                            </button>
                           </div>
                           
                           <div className="segment-text">
