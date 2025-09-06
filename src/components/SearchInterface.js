@@ -4,6 +4,7 @@ import VideoList from './VideoList';
 import KeyframeGrid from './KeyframeGrid';
 import AllFramesView from './AllFramesView';
 import ASRSearchTab from './ASRSearchTab';
+import SearchLevelSelector from './SearchLevelSelector';
 
 const SearchInterface = ({ onOpenVideo }) => {
   const [activeTab, setActiveTab] = useState('visual'); // 'visual' or 'asr'
@@ -42,12 +43,32 @@ const SearchInterface = ({ onOpenVideo }) => {
   const [excludeVidIdsText, setExcludeVidIdsText] = useState(""); // comma-separated video ids e.g. L21_V001,L22_V003
   const [batch, setBatch] = useState(1); // batch selection: 1 or 2
 
+  // Search level selector state
+  const [searchLevel, setSearchLevel] = useState('all'); // 'all', 'batch', 'group', 'video'
+  const [selectedBatches, setSelectedBatches] = useState([]);
+  const [selectedGroups, setSelectedGroups] = useState([]);
+  const [selectedVideos, setSelectedVideos] = useState([]);
+
   const doSearch = async () => {
     setError("");
     setProcessingTime(null);
     if (!query.trim()) return;
     if (!csvBaseName || !csvBaseName.trim()) {
       setError('Please set a query name (or upload a .txt file).');
+      return;
+    }
+
+    // Validate search level selections
+    if (searchLevel === 'batch' && selectedBatches.length === 0) {
+      setError('Please select at least one batch to search within.');
+      return;
+    }
+    if (searchLevel === 'group' && (selectedBatches.length === 0 || selectedGroups.length === 0)) {
+      setError('Please select at least one batch and group to search within.');
+      return;
+    }
+    if (searchLevel === 'video' && (selectedBatches.length === 0 || selectedGroups.length === 0 || selectedVideos.length === 0)) {
+      setError('Please select at least one batch, group, and video to search within.');
       return;
     }
     
@@ -82,6 +103,22 @@ const SearchInterface = ({ onOpenVideo }) => {
         if (filterAsr) filtering.asr_text = listFromValues(asrValues);
       }
 
+      // Build search scope based on search level
+      const searchScope = {};
+      if (searchLevel === 'batch' && selectedBatches.length > 0) {
+        searchScope.batches = selectedBatches;
+      } else if (searchLevel === 'group' && selectedGroups.length > 0) {
+        searchScope.batches = selectedBatches;
+        searchScope.groups = selectedGroups;
+      } else if (searchLevel === 'video' && selectedVideos.length > 0) {
+        searchScope.batches = selectedBatches;
+        searchScope.groups = selectedGroups;
+        searchScope.videos = selectedVideos;
+      } else {
+        // 'all' level - use existing batch selection
+        searchScope.batch = batch;
+      }
+
       const fetchPromise = fetch('http://localhost:8000/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,7 +136,8 @@ const SearchInterface = ({ onOpenVideo }) => {
           exclude_vid_id: excludeByVideo
             ? (excludeVidIdsText || "").split(',').map(s => s.trim()).filter(Boolean)
             : undefined,
-          batch: batch
+          // Search scope
+          ...searchScope
         }),
         signal: controller.signal
       });
@@ -294,6 +332,26 @@ const SearchInterface = ({ onOpenVideo }) => {
     <div className="layout">
       <aside className="sidebar">
         <h2 className="sidebar-title">Controls</h2>
+        
+        <SearchLevelSelector
+          searchLevel={searchLevel}
+          setSearchLevel={setSearchLevel}
+          selectedBatches={selectedBatches}
+          setSelectedBatches={setSelectedBatches}
+          selectedGroups={selectedGroups}
+          setSelectedGroups={setSelectedGroups}
+          selectedVideos={selectedVideos}
+          setSelectedVideos={setSelectedVideos}
+          onLevelChange={(level) => {
+            // Update batch selection when level changes
+            if (level === 'batch' && selectedBatches.length > 0) {
+              setBatch(selectedBatches[0]); // Use first selected batch
+            } else if (level === 'all') {
+              setBatch(1); // Reset to default
+            }
+          }}
+        />
+        
         <SearchForm
           query={query}
           setQuery={setQuery}
