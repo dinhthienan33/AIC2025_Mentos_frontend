@@ -222,6 +222,15 @@ h1 {
   font-weight: 600;
   padding: 12px;
   background: rgba(16, 185, 129, 0.1);
+}
+
+.search-method-indicator {
+  color: #3b82f6;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.processing-time {
   border-radius: 8px;
   border: 1px solid rgba(16, 185, 129, 0.2);
 }
@@ -1386,6 +1395,21 @@ h1 {
 
 .asr-search-tab .video-link-button:active {
   transform: translateY(0);
+}
+
+.asr-search-tab .frame-info {
+  margin-top: 8px;
+  padding: 6px 12px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.asr-search-tab .frame-range {
+  font-size: 11px;
+  color: #8b5cf6;
+  font-weight: 500;
+  font-family: monospace;
 }
 
 .player-actions {

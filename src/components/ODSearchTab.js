@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { getSafeVideoUrl, isValidVideoUrl } from '../utils/videoUtils';
 
-const ASRSearchTab = () => {
+const ODSearchTab = () => {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState([]);
@@ -20,7 +20,7 @@ const ASRSearchTab = () => {
     setResults([]);
 
     try {
-      const response = await fetch('http://localhost:8000/asr-search', {
+      const response = await fetch('http://localhost:8000/od-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -37,7 +37,7 @@ const ASRSearchTab = () => {
       const data = await response.json();
       
       // Debug log to see the actual response structure
-      console.log('ASR Search Response:', data);
+      console.log('OD Search Response:', data);
       
       if (data.processing_time !== undefined) {
         setProcessingTime(data.processing_time);
@@ -46,7 +46,7 @@ const ASRSearchTab = () => {
       if (data.results && data.results.length > 0) {
         setResults(data.results);
       } else {
-        setError('No ASR results found for your query');
+        setError('No OD results found for your query');
       }
 
     } catch (err) {
@@ -67,30 +67,24 @@ const ASRSearchTab = () => {
     }
   };
 
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   const openVideoUrl = (url) => {
     const safeUrl = getSafeVideoUrl(url);
     window.open(safeUrl, '_blank');
   };
 
   return (
-    <div className="asr-search-tab">
+    <div className="od-search-tab">
       <div className="search-container">
-        <h2>ASR Search</h2>
+        <h2>OD Search</h2>
         <p className="description">
-          Search through video content using Automatic Speech Recognition (ASR) transcripts.
+          Search through video content using Object Detection (OD) to find specific objects.
         </p>
         
         <form className="search-form" onSubmit={handleSearch}>
           <div className="control-group">
             <label>Search Query:</label>
             <textarea
-              placeholder="Enter your search terms for ASR content..."
+              placeholder="Enter objects to search for (e.g., dog, car, person)..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -126,70 +120,67 @@ const ASRSearchTab = () => {
             disabled={loading}
             className="search-button"
           >
-            {loading ? 'Searching...' : 'Search ASR'}
+            {loading ? 'Searching...' : 'Search Objects'}
           </button>
         </form>
 
         {error && <div className="error-message">Error: {error}</div>}
-        {!error && loading && <div className="loading-message">Searching ASR content...</div>}
+        {!error && loading && <div className="loading-message">Searching for objects...</div>}
         {!error && !loading && processingTime && (
           <div className="processing-time">
-            ⚡ ASR search completed in {processingTime.toFixed(2)} seconds
+            ⚡ OD search completed in {processingTime.toFixed(2)} seconds
           </div>
         )}
 
         {results && results.length > 0 && (
           <div className="results-container">
-            <h3>ASR Search Results ({results.length})</h3>
+            <h3>OD Search Results ({results.length})</h3>
             <div className="results-list">
-              {results.map((video, index) => (
+              {results.map((result, index) => (
                 <div key={index} className="result-item">
                   <div className="result-header">
                     <span className="result-number">#{index + 1}</span>
-                    <span className="video-id">Video: {video.video_name || 'Unknown'}</span>
-                    <span className="score">Score: {video.score ? video.score.toFixed(3) : 'N/A'}</span>
+                    <span className="video-id">Video: {result.video_id || 'Unknown'}</span>
+                    <span className="score">Score: {result.score ? result.score.toFixed(3) : 'N/A'}</span>
                   </div>
                   
-                  {video.segments && video.segments.length > 0 ? (
-                    <div className="segments-container">
-                      <h4>Matching Segments ({video.segments.length})</h4>
-                      {video.segments.map((segment, segIndex) => (
-                        <div key={segIndex} className="segment-item">
-                          <div className="segment-header">
-                            <span className="segment-id">Segment {segment.segment_id || 'Unknown'}</span>
-                            <span className="segment-time">
-                              {formatTime(segment.start_time || 0)} - {formatTime(segment.end_time || 0)} 
-                              <span className="duration">({segment.duration ? segment.duration.toFixed(2) : '0.00'}s)</span>
+                  <div className="object-info">
+                    <div className="object-names">
+                      <h4>Detected Objects:</h4>
+                      <div className="object-tags">
+                        {result.object_names && result.object_names.length > 0 ? (
+                          result.object_names.map((obj, objIndex) => (
+                            <span key={objIndex} className="object-tag">
+                              {obj}
                             </span>
-                            <button 
-                              className="video-link-button"
-                              onClick={() => openVideoUrl(segment.video_url)}
-                              title={isValidVideoUrl(segment.video_url) ? "Open video at this timestamp" : "Open YouTube (video URL not available)"}
-                            >
-                              {isValidVideoUrl(segment.video_url) ? '🎥 Watch' : '🎥 YouTube'}
-                            </button>
-                          </div>
-                          
-                          <div className="segment-text">
-                            {segment.text || 'No transcript available'}
-                          </div>
-                          
-                          <div className="frame-info">
-                            <span className="frame-range">
-                              Frames: {segment.start_frame || 'N/A'} - {segment.end_frame || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                          ))
+                        ) : (
+                          <span className="no-objects">No objects detected</span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="segments-container">
-                      <h4>No Segments Found</h4>
-                      <p style={{ textAlign: 'center', color: '#9fb0c6', fontStyle: 'italic' }}>
-                        This video has no matching transcript segments for your search query.
-                      </p>
+                    
+                    <div className="video-actions">
+                      {result.video_url && (
+                        <button 
+                          className="video-link-button"
+                          onClick={() => openVideoUrl(result.video_url)}
+                          title="Open video"
+                        >
+                          🎥 Watch Video
+                        </button>
+                      )}
+                      {result.thumbnail_url && (
+                        <img 
+                          src={result.thumbnail_url} 
+                          alt={`Thumbnail for ${result.video_id}`}
+                          className="video-thumbnail"
+                          onClick={() => openVideoUrl(result.video_url)}
+                          title="Click to open video"
+                        />
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -200,4 +191,4 @@ const ASRSearchTab = () => {
   );
 };
 
-export default ASRSearchTab;
+export default ODSearchTab;

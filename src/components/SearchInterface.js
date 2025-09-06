@@ -4,10 +4,11 @@ import VideoList from './VideoList';
 import KeyframeGrid from './KeyframeGrid';
 import AllFramesView from './AllFramesView';
 import ASRSearchTab from './ASRSearchTab';
+import ODSearchTab from './ODSearchTab';
 import SearchLevelSelector from './SearchLevelSelector';
 
 const SearchInterface = ({ onOpenVideo }) => {
-  const [activeTab, setActiveTab] = useState('visual'); // 'visual' or 'asr'
+  const [activeTab, setActiveTab] = useState('visual'); // 'visual', 'asr', or 'od'
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState([]);
@@ -58,19 +59,8 @@ const SearchInterface = ({ onOpenVideo }) => {
       return;
     }
 
-    // Validate search level selections
-    if (searchLevel === 'batch' && selectedBatches.length === 0) {
-      setError('Please select at least one batch to search within.');
-      return;
-    }
-    if (searchLevel === 'group' && (selectedBatches.length === 0 || selectedGroups.length === 0)) {
-      setError('Please select at least one batch and group to search within.');
-      return;
-    }
-    if (searchLevel === 'video' && (selectedBatches.length === 0 || selectedGroups.length === 0 || selectedVideos.length === 0)) {
-      setError('Please select at least one batch, group, and video to search within.');
-      return;
-    }
+    // Note: With the new hierarchical search logic, we allow searches even without specific selections
+    // The system will automatically include all relevant items at the selected level
     
     // Validate and set defaults for empty fields
     const finalK = k === '' || k === null || k === undefined ? 10 : parseInt(k) || 10;
@@ -103,42 +93,133 @@ const SearchInterface = ({ onOpenVideo }) => {
         if (filterAsr) filtering.asr_text = listFromValues(asrValues);
       }
 
-      // Build search scope based on search level
-      const searchScope = {};
-      if (searchLevel === 'batch' && selectedBatches.length > 0) {
-        searchScope.batches = selectedBatches;
-      } else if (searchLevel === 'group' && selectedGroups.length > 0) {
-        searchScope.batches = selectedBatches;
-        searchScope.groups = selectedGroups;
-      } else if (searchLevel === 'video' && selectedVideos.length > 0) {
-        searchScope.batches = selectedBatches;
-        searchScope.groups = selectedGroups;
-        searchScope.videos = selectedVideos;
+      // Search scope is now handled in the request body building below
+
+      // Determine search method based on search level
+      let searchMethod;
+      if (searchLevel === 'all') {
+        searchMethod = filteringEnabled ? "filtering" : (temporalSearch ? "temporal" : "normal");
       } else {
-        // 'all' level - use existing batch selection
-        searchScope.batch = batch;
+        // Use hierarchical search for batch/group/video level searches
+        searchMethod = "hierachical";
+      }
+
+      // Build request body
+      const requestBody = { 
+        query: query,
+        top_k: finalK,
+        score_threshold: finalScoreThreshold,
+        model_name: modelName,
+        search_method: searchMethod,
+        filtering: filtering && Object.keys(filtering).length > 0 ? filtering : undefined,
+        // New exclusion fields
+        exclude_groups: excludeByGroup
+          ? (excludeGroupsText || "").split(',').map(s => s.trim()).filter(Boolean)
+          : undefined,
+        exclude_vid_id: excludeByVideo
+          ? (excludeVidIdsText || "").split(',').map(s => s.trim()).filter(Boolean)
+          : undefined,
+      };
+
+      // Add hierarchical search specific fields
+      if (searchMethod === "hierachical") {
+        // Set model to clip for hierarchical search
+        requestBody.model_name = 'clip';
+        
+        // Add index files based on selected batches/groups/videos
+        const indexFiles = [];
+        
+        if (searchLevel === 'all') {
+          // All -> take batch1 and 2 (all groups from both batches)
+          const allGroups = [
+            "L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30", // Batch 1
+            "K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", 
+            "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"  // Batch 2
+          ];
+          allGroups.forEach(group => {
+            indexFiles.push(`${group}_V001.bin`);
+          });
+        } else if (searchLevel === 'batch') {
+          if (selectedBatches.length > 0) {
+            // Specific batches selected -> add all groups from those batches
+            selectedBatches.forEach(batchNum => {
+              const batchGroups = batchNum === 1 ? 
+                ["L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30"] :
+                ["K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", 
+                 "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"];
+              
+              batchGroups.forEach(group => {
+                indexFiles.push(`${group}_V001.bin`);
+              });
+            });
+          } else {
+            // No specific batches selected -> take all groups from both batches
+            const allGroups = [
+              "L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30", // Batch 1
+              "K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", 
+              "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"  // Batch 2
+            ];
+            allGroups.forEach(group => {
+              indexFiles.push(`${group}_V001.bin`);
+            });
+          }
+        } else if (searchLevel === 'group') {
+          if (selectedGroups.length > 0) {
+            // Specific groups selected -> add those groups
+            selectedGroups.forEach(group => {
+              indexFiles.push(`${group}_V001.bin`);
+            });
+          } else {
+            // No specific groups selected -> take all groups from both batches
+            const allGroups = [
+              "L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30", // Batch 1
+              "K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", 
+              "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"  // Batch 2
+            ];
+            allGroups.forEach(group => {
+              indexFiles.push(`${group}_V001.bin`);
+            });
+          }
+        } else if (searchLevel === 'video') {
+          if (selectedVideos.length > 0) {
+            // Specific videos selected -> add groups for those videos
+            selectedVideos.forEach(video => {
+              const group = video.split('_')[0];
+              indexFiles.push(`${group}_V001.bin`);
+            });
+          } else {
+            // No specific videos selected -> take all groups from both batches
+            const allGroups = [
+              "L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30", // Batch 1
+              "K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", 
+              "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"  // Batch 2
+            ];
+            allGroups.forEach(group => {
+              indexFiles.push(`${group}_V001.bin`);
+            });
+          }
+        }
+        
+        if (indexFiles.length > 0) {
+          requestBody.index_files = indexFiles;
+        }
+        
+        // Add include groups/videos for filtering (only when specific selections are made)
+        if (selectedGroups.length > 0) {
+          requestBody.include_groups = selectedGroups;
+        }
+        if (selectedVideos.length > 0) {
+          requestBody.include_videos = selectedVideos;
+        }
+      } else {
+        // For non-hierarchical search, use existing search scope
+        requestBody.batch = batch;
       }
 
       const fetchPromise = fetch('http://localhost:8000/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          query: query,
-          top_k: finalK,
-          score_threshold: finalScoreThreshold,
-          model_name: modelName,
-          search_method: filteringEnabled ? "filtering" : (temporalSearch ? "temporal" : "normal"),
-          filtering: filtering && Object.keys(filtering).length > 0 ? filtering : undefined,
-          // New exclusion fields
-          exclude_groups: excludeByGroup
-            ? (excludeGroupsText || "").split(',').map(s => s.trim()).filter(Boolean)
-            : undefined,
-          exclude_vid_id: excludeByVideo
-            ? (excludeVidIdsText || "").split(',').map(s => s.trim()).filter(Boolean)
-            : undefined,
-          // Search scope
-          ...searchScope
-        }),
+        body: JSON.stringify(requestBody),
         signal: controller.signal
       });
       const res = await fetchPromise;
@@ -483,10 +564,18 @@ const SearchInterface = ({ onOpenVideo }) => {
             >
               ASR Search
             </button>
+            <button
+              className={`tab-button ${activeTab === 'od' ? 'active' : ''}`}
+              onClick={() => setActiveTab('od')}
+            >
+              OD Search
+            </button>
           </div>
 
           {activeTab === 'asr' ? (
             <ASRSearchTab />
+          ) : activeTab === 'od' ? (
+            <ODSearchTab />
           ) : (
             <>
               <h1>Visual Search</h1>
@@ -524,6 +613,11 @@ const SearchInterface = ({ onOpenVideo }) => {
           {!error && !loading && processingTime && (
             <div className="processing-time">
               ⚡ Search completed in {processingTime.toFixed(2)} seconds
+              {searchLevel !== 'all' && (
+                <span className="search-method-indicator">
+                  {' '}• Hierarchical Search ({searchLevel} level)
+                </span>
+              )}
             </div>
           )}
           
