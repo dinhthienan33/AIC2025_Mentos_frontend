@@ -141,7 +141,12 @@ const SearchInterface = ({ onOpenVideo }) => {
           });
         } else if (searchLevel === 'batch') {
           if (selectedBatches.length > 0) {
-            // Specific batches selected -> add all groups from those batches
+            // Specific batches selected -> add all videos from all groups in those batches
+            const batchData = {
+              1: { groupFileCounts: { "L21": 29, "L22": 31, "L23": 25, "L24": 43, "L25": 88, "L26": 474, "L27": 16, "L28": 24, "L29": 23, "L30": 96 } },
+              2: { groupFileCounts: { "K01": 31, "K02": 31, "K03": 29, "K04": 30, "K05": 34, "K06": 31, "K07": 31, "K08": 30, "K09": 28, "K10": 28, "K11": 31, "K12": 31, "K13": 30, "K14": 30, "K15": 31, "K16": 32, "K17": 30, "K18": 27, "K19": 31, "K20": 31 } }
+            };
+            
             selectedBatches.forEach(batchNum => {
               const batchGroups = batchNum === 1 ? 
                 ["L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30"] :
@@ -149,7 +154,11 @@ const SearchInterface = ({ onOpenVideo }) => {
                  "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"];
               
               batchGroups.forEach(group => {
-                indexFiles.push(`${group}_V001.bin`);
+                const fileCount = batchData[batchNum].groupFileCounts[group] || 0;
+                for (let i = 1; i <= fileCount; i++) {
+                  const videoId = `${group}_V${i.toString().padStart(3, '0')}`;
+                  indexFiles.push(`${videoId}.bin`);
+                }
               });
             });
           } else {
@@ -165,9 +174,30 @@ const SearchInterface = ({ onOpenVideo }) => {
           }
         } else if (searchLevel === 'group') {
           if (selectedGroups.length > 0) {
-            // Specific groups selected -> add those groups
+            // Specific groups selected -> add index files for all videos in those groups
             selectedGroups.forEach(group => {
-              indexFiles.push(`${group}_V001.bin`);
+              // Use the actual file counts from the batch data
+              const batchData = {
+                1: { groupFileCounts: { "L21": 29, "L22": 31, "L23": 25, "L24": 43, "L25": 88, "L26": 474, "L27": 16, "L28": 24, "L29": 23, "L30": 96 } },
+                2: { groupFileCounts: { "K01": 31, "K02": 31, "K03": 29, "K04": 30, "K05": 34, "K06": 31, "K07": 31, "K08": 30, "K09": 28, "K10": 28, "K11": 31, "K12": 31, "K13": 30, "K14": 30, "K15": 31, "K16": 32, "K17": 30, "K18": 27, "K19": 31, "K20": 31 } }
+              };
+              
+              // Determine which batch this group belongs to
+              const batch1Groups = ["L21", "L22", "L23", "L24", "L25", "L26", "L27", "L28", "L29", "L30"];
+              const batch2Groups = ["K01", "K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", "K11", "K12", "K13", "K14", "K15", "K16", "K17", "K18", "K19", "K20"];
+              
+              let fileCount = 0;
+              if (batch1Groups.includes(group)) {
+                fileCount = batchData[1].groupFileCounts[group] || 0;
+              } else if (batch2Groups.includes(group)) {
+                fileCount = batchData[2].groupFileCounts[group] || 0;
+              }
+              
+              // Add all videos from the group
+              for (let i = 1; i <= fileCount; i++) {
+                const videoId = `${group}_V${i.toString().padStart(3, '0')}`;
+                indexFiles.push(`${videoId}.bin`);
+              }
             });
           } else {
             // No specific groups selected -> take all groups from both batches
@@ -182,10 +212,9 @@ const SearchInterface = ({ onOpenVideo }) => {
           }
         } else if (searchLevel === 'video') {
           if (selectedVideos.length > 0) {
-            // Specific videos selected -> add groups for those videos
+            // Specific videos selected -> add index files for those specific videos
             selectedVideos.forEach(video => {
-              const group = video.split('_')[0];
-              indexFiles.push(`${group}_V001.bin`);
+              indexFiles.push(`${video}.bin`);
             });
           } else {
             // No specific videos selected -> take all groups from both batches
@@ -202,6 +231,8 @@ const SearchInterface = ({ onOpenVideo }) => {
         
         if (indexFiles.length > 0) {
           requestBody.index_files = indexFiles;
+          console.log(`🔍 Generated ${indexFiles.length} index files for ${searchLevel} level search`);
+          console.log('📁 Index files:', indexFiles.slice(0, 10), indexFiles.length > 10 ? `... and ${indexFiles.length - 10} more` : '');
         }
         
         // Add include groups/videos for filtering (only when specific selections are made)
