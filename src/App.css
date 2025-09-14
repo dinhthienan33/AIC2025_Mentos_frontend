@@ -1462,7 +1462,54 @@ h1 {
 .player-split{display:flex;height:100%;}
 .player-left{position:relative;flex:1;min-width:0;}
 .player-right{width:280px;background:#0f1320;border-left:1px solid #1f2937;padding:10px;overflow:auto}
-.marks-header{font-weight:700;margin-bottom:8px}
+.marks-header{
+  font-weight:700;
+  margin-bottom:8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.copy-all-btn {
+  background: rgba(33, 150, 243, 0.8);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: normal;
+}
+
+.copy-all-btn:hover {
+  background: rgba(33, 150, 243, 1);
+}
+
+.copy-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: rgba(33, 150, 243, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
 .marks-list{display:flex;flex-direction:column;gap:6px}
 .mark-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;background:#101828;border:1px solid #1f2937;border-radius:6px}
 .mark-line{font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:12px;background:#0b2237;color:#cfe3ff;border:1px solid #203a59;border-radius:4px;padding:4px 6px;cursor:pointer}
@@ -1480,6 +1527,21 @@ h1 {
   margin-left: 6px;
 }
 .mark-dl:hover { background: rgba(0,0,0,.8); }
+
+.mark-copy {
+  background: rgba(33, 150, 243, 0.8);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 8px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 6px;
+}
+
+.mark-copy:hover { 
+  background: rgba(33, 150, 243, 1); 
+}
 
 /* Search Level Selector Styles */
 .search-level-selector {

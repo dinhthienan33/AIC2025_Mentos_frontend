@@ -25,6 +25,7 @@ const VideoPlayerModal = ({
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSec, setCurrentSec] = useState(Math.max(0, Math.floor(startSeconds || 0)));
     const [videoFps, setVideoFps] = useState(null);
+    const [copyMessage, setCopyMessage] = useState('');
     
     // marks hiển thị trên thanh marker
     const sortedMarkers = useMemo(
@@ -306,6 +307,51 @@ const VideoPlayerModal = ({
         document.body.removeChild(a);
     };
 
+    // === Copy keyframe to clipboard
+    const copyKeyframe = async (line) => {
+        try {
+            await navigator.clipboard.writeText(line);
+            console.log(`Copied to clipboard: ${line}`);
+            setCopyMessage('Copied!');
+            setTimeout(() => setCopyMessage(''), 2000);
+        } catch (err) {
+            console.error('Failed to copy: ', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = line;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            setCopyMessage('Copied!');
+            setTimeout(() => setCopyMessage(''), 2000);
+        }
+    };
+
+    // === Copy all keyframes to clipboard
+    const copyAllKeyframes = async () => {
+        if (picked.length === 0) return;
+        
+        const allKeyframes = picked.map(p => p.line).join('\n');
+        try {
+            await navigator.clipboard.writeText(allKeyframes);
+            console.log(`Copied ${picked.length} keyframes to clipboard`);
+            setCopyMessage(`Copied ${picked.length} keyframes!`);
+            setTimeout(() => setCopyMessage(''), 2000);
+        } catch (err) {
+            console.error('Failed to copy all: ', err);
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = allKeyframes;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            setCopyMessage(`Copied ${picked.length} keyframes!`);
+            setTimeout(() => setCopyMessage(''), 2000);
+        }
+    };
+
     // === UI
     return (
         <div className="player-overlay" onClick={onClose}>
@@ -317,6 +363,13 @@ const VideoPlayerModal = ({
                 aria-label="Video player"
             >
                 <button className="player-close" onClick={onClose} aria-label="Close">×</button>
+                
+                {/* Copy notification toast */}
+                {copyMessage && (
+                    <div className="copy-toast">
+                        {copyMessage}
+                    </div>
+                )}
 
                 <div className="player-split">
                     {/* LEFT: video */}
@@ -373,7 +426,14 @@ const VideoPlayerModal = ({
 
                     {/* RIGHT: list */}
                     <aside className="player-right">
-                        <div className="marks-header">Keyframes ({picked.length})</div>
+                        <div className="marks-header">
+                            <span>Keyframes ({picked.length})</span>
+                            {picked.length > 0 && (
+                                <button className="copy-all-btn" onClick={copyAllKeyframes} title="Copy all keyframes">
+                                    📋 Copy All
+                                </button>
+                            )}
+                        </div>
                         <div className="marks-list">
                             {picked.map((p, i) => (
                                 <div
@@ -385,6 +445,7 @@ const VideoPlayerModal = ({
                                     onDrop={onDropPicked(i)}
                                 >
                                     <button className="mark-time" onClick={() => seekTo(p.sec)}>{p.line}</button>
+                                    <button className="mark-copy" title="Copy to clipboard" onClick={() => copyKeyframe(p.line)}>📋</button>
                                     <button className="mark-dl" title="Download CSV" onClick={() => downloadOneCSV(p.line)}>⬇</button>
                                     <button className="mark-del" onClick={() => removePicked(i)}>✕</button>
                                 </div>
