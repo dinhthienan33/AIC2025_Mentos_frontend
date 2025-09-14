@@ -1,5 +1,6 @@
 // src/components/VideoPlayerModal.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getVideoFps, timestampToFrameNumber, frameNumberToTimestamp } from '../utils/fpsUtils';
 
 const isYouTubeHost = (h) => /(^|\.)youtube\.com$|(^|\.)youtu\.be$/.test(h);
 
@@ -23,6 +24,8 @@ const VideoPlayerModal = ({
     const [duration, setDuration] = useState(0);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [currentSec, setCurrentSec] = useState(Math.max(0, Math.floor(startSeconds || 0)));
+    const [videoFps, setVideoFps] = useState(null);
+    
     // marks hiển thị trên thanh marker
     const sortedMarkers = useMemo(
         () =>
@@ -71,6 +74,18 @@ const VideoPlayerModal = ({
             htmlVideoRef.current.play().catch(() => { });
         }
     };
+
+    // === Load FPS data for the video
+    useEffect(() => {
+        if (videoId) {
+            getVideoFps(videoId).then(fps => {
+                setVideoFps(fps);
+                console.log(`Loaded FPS for ${videoId}: ${fps}`);
+            }).catch(error => {
+                console.error(`Error loading FPS for ${videoId}:`, error);
+            });
+        }
+    }, [videoId]);
 
     // === Load YT Iframe API (nếu là Youtube)
     useEffect(() => {
@@ -179,6 +194,14 @@ const VideoPlayerModal = ({
         seekTo(sortedMarkers[nextIdx]);
     };
 
+    // === Previous marker
+    const jumpPrevious = () => {
+        if (!sortedMarkers.length) return;
+        const prevIdx = currentIndex === 0 ? sortedMarkers.length - 1 : currentIndex - 1;
+        setCurrentIndex(prevIdx);
+        seekTo(sortedMarkers[prevIdx]);
+    };
+
     // === Map thời điểm -> keyframe của model (midpoint logic)
     const pickModelKeyframeAtTime = useMemo(() => {
         const refs = Array.from(keyframeRefs || [])
@@ -235,7 +258,8 @@ const VideoPlayerModal = ({
     // === Add keyframe (theo model)
     const addKeyframe = () => {
         const t = getCurrentTime();                 // giây hiện tại (float)
-        const fpsToUse = inferredFps ?? frameRate ?? 30; // ưu tiên FPS suy ra -> prop frameRate -> 30
+        // ưu tiên FPS từ CSV -> FPS suy ra -> prop frameRate -> 30
+        const fpsToUse = videoFps ?? inferredFps ?? frameRate ?? 30;
         const frameIdx = Math.floor(t * fpsToUse);  // công thức của bạn
 
         const id = (videoId && String(videoId)) || 'video';
@@ -245,6 +269,7 @@ const VideoPlayerModal = ({
             prev.some(p => p.line === line) ? prev : [...prev, { line, sec: Math.floor(t), frameIdx }]
         ));
 
+        console.log(`Added keyframe: ${line} (FPS: ${fpsToUse}, Time: ${t.toFixed(2)}s)`);
         // KHÔNG thêm marker mới lên thanh — giữ nguyên markers mặc định
         // (nên bỏ mọi setCustomMarks trong addKeyframe)
     };
@@ -299,7 +324,15 @@ const VideoPlayerModal = ({
                         <div className="player-actions">
                             <button className="add-btn" onClick={addKeyframe}>＋ Add keyframe</button>
                             {sortedMarkers.length > 0 && (
-                                <button className="next-btn" onClick={jumpNext}>Next</button>
+                                <>
+                                    <button className="prev-btn" onClick={jumpPrevious}>Previous</button>
+                                    <button className="next-btn" onClick={jumpNext}>Next</button>
+                                </>
+                            )}
+                            {videoFps && (
+                                <div className="fps-info">
+                                    FPS: {videoFps} | Frame: {timestampToFrameNumber(getCurrentTime(), videoFps)}
+                                </div>
                             )}
                         </div>
 

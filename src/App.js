@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import SearchInterface from './components/SearchInterface';
-import VideoPlayer from './components/VideoPlayer';
+import VideoPlayModal from './components/VideoPlayModal';
 import './App.css';
 
 function App() {
@@ -12,12 +12,16 @@ function App() {
     const endTime = keyframe.end_time || (startTime + 10); // Default 10 second segment
     
     setVideoPlayer({
-      video_id: keyframe.video_id,
-      video_url: keyframe.video_url,
-      start_time: startTime,
-      end_time: endTime,
-      keyframe_num: keyframe.keyframe_num,
-      confidence_score: keyframe.confidence_score
+      videoUrl: keyframe.video_url,
+      startSeconds: startTime,
+      videoId: keyframe.video_id,
+      keyframeRefs: [{
+        timestamp: startTime,
+        keyframe_num: keyframe.keyframe_num,
+        confidence_score: keyframe.confidence_score
+      }],
+      markers: [startTime],
+      csvBaseName: keyframe.video_id
     });
   };
 
@@ -29,8 +33,13 @@ function App() {
     <div className="App">
       <SearchInterface onOpenVideo={openVideoPlayer} />
       {videoPlayer && (
-        <VideoPlayer 
-          video={videoPlayer} 
+        <VideoPlayModal 
+          videoUrl={videoPlayer.videoUrl}
+          startSeconds={videoPlayer.startSeconds}
+          videoId={videoPlayer.videoId}
+          keyframeRefs={videoPlayer.keyframeRefs}
+          markers={videoPlayer.markers}
+          csvBaseName={videoPlayer.csvBaseName}
           onClose={closeVideoPlayer} 
         />
       )}
